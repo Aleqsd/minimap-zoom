@@ -1,6 +1,16 @@
 # Compilation et maintenance
 
-Prérequis : Windows x64, SDK .NET 10, bibliothèques locales de Dalamud API 15. Les dépendances sont fournies par l’installation Dalamud ; aucun binaire de dépendance ni police n’est distribué avec le plugin.
+Prérequis : Windows x64, SDK .NET 10, bibliothèques locales de Dalamud API 15. Le projet utilise `Dalamud.NET.Sdk/15.0.0` avec DalamudPackager et son lockfile. Les bibliothèques du jeu et de Dalamud sont fournies par l’installation Dalamud ; aucun de ces binaires ni police n’est distribué avec le plugin.
+
+Pour compiler et préparer le ZIP sans recopier de DLL vers un emplacement d’exécution :
+
+```powershell
+dotnet build src/MinimapZoom.csproj -c Release '-p:DalamudLibPath=D:\Dalamud' -p:RestoreLockedMode=true
+```
+
+Le SDK accepte aussi `DALAMUD_HOME`. L’argument local historique `-p:DalamudHome=...` reste disponible. La DLL est produite dans `src/bin/Release/net10.0-windows/` ; DalamudPackager génère `MinimapZoom/latest.zip` et son manifeste dans ce même dossier. Le ZIP contient la DLL, les symboles, les JSON nécessaires et la licence à sa racine.
+
+Le script suivant copie aussi les fichiers vers les emplacements de test locaux :
 
 ```powershell
 .\build.ps1 -DalamudHome 'D:\Dalamud' -Dotnet 'dotnet' -Check -GameExecutable 'D:\FFXIV\game\ffxiv_dx11.exe'
@@ -10,7 +20,7 @@ Le SDK facultatif `../.tools/dotnet/dotnet.exe` est utilisé s’il existe ; sin
 
 Le build produit `releases/<version>/` et `plugin/`. Il vérifie la version assembly/manifeste et les empreintes des copies. **La copie vers `plugin/` peut déclencher un rechargement si Dalamud surveille ce chemin.** Une recompilation remplace les fichiers de la même version ; augmenter les versions du projet et du manifeste pour conserver un nouvel essai.
 
-Les chemins source du PDB sont neutralisés avec `PathMap` et la génération automatique de SourceLink est désactivée. Le build refuse un PDB contenant un chemin de profil utilisateur ; le commit de provenance reste inscrit dans `build-info.json`.
+Les symboles restent dans un PDB portable pour conserver le fonctionnement du script local. Ses chemins source sont neutralisés avec `PathMap` et la génération automatique de SourceLink est désactivée. Le script local refuse un PDB contenant un chemin de profil utilisateur ; le commit de provenance reste inscrit dans `build-info.json` pour les copies produites par ce script.
 
 Les contrôles utilisent les classes de production sur des allocations isolées. Les contrôles du binaire lisent le fichier du jeu sur disque, sans ouvrir son processus. Un client différent est refusé : reprendre [l’analyse native](native-mapping.md) avant de modifier les contrats.
 
@@ -47,3 +57,5 @@ Le code de ce dépôt et ses textures géométriques sont sous licence MIT. Les 
 L’[icône du plugin](https://github.com/Aleqsd/dalamud-plugins/blob/main/icons/MinimapZoom.svg) est un dessin original distribué sous licence MIT par le catalogue personnalisé.
 
 Le plugin a été développé avec une assistance IA. La release GitHub est un essai indépendant, sans soumission au catalogue officiel Dalamud.
+
+La [préparation D17](submission-preparation.md) décrit le périmètre natif, les limites et les points à soumettre à l’avis des approbateurs.

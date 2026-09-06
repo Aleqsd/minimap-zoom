@@ -34,4 +34,6 @@ Si une copie de développement est déjà installée, la désactiver et retirer 
 
 **Version expérimentale 0.4.1**, pour Dalamud API 15 et le client `2026.08.11.0000.0000`. La portée des icônes fixes suit le dézoom ; la limite native de 100 marqueurs et les données disponibles côté client restent applicables. Les réglages gardent une présentation fixe qui suit l’échelle globale Dalamud. Les préférences de la mini-carte sont conservées lors de la mise à jour.
 
+J’ai développé ce plugin avec l’aide de Codex, qui a écrit une grande partie du code. Je l’ai testé en jeu et fait évoluer avec mes idées et mes retours.
+
 [Compiler et vérifier](docs/development.md) · [Validation](docs/validation.md) · [Historique](CHANGELOG.md)
