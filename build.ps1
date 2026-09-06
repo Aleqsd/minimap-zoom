@@ -21,6 +21,10 @@ if ($Check) {
 }
 $miniBuildOutput = Join-Path $PSScriptRoot 'src\bin\Release\net10.0-windows'
 $miniBuiltDll = Join-Path $miniBuildOutput 'MinimapZoom.dll'
+$miniPdbText = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $miniBuildOutput 'MinimapZoom.pdb')))
+if ($miniPdbText -match '[A-Za-z]:[\\/]+Users[\\/]+|[/\\]home[/\\]') {
+    throw 'Portable PDB contains a user profile path. Verify PathMap and SourceLink before distribution.'
+}
 $miniAssemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($miniBuiltDll).Version
 $miniManifest = Get-Content -LiteralPath (Join-Path $miniBuildOutput 'MinimapZoom.json') -Raw | ConvertFrom-Json
 if ($miniManifest.AssemblyVersion -ne $miniAssemblyVersion.ToString()) {

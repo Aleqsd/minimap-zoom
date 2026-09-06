@@ -12,6 +12,8 @@
     <Author>Aleqsd</Author>
     <Deterministic>true</Deterministic>
     <PathMap>$(MSBuildProjectDirectory)=/_/src</PathMap>
+    <!-- Keep local repository roots out of portable PDB SourceLink metadata. -->
+    <EnableSourceLink>false</EnableSourceLink>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <DalamudHome Condition="'$(DalamudHome)' == ''">$(APPDATA)\XIVLauncher\addon\Hooks\dev</DalamudHome>

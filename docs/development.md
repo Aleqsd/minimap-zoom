@@ -10,6 +10,8 @@ Le SDK facultatif `../.tools/dotnet/dotnet.exe` est utilisé s’il existe ; sin
 
 Le build produit `releases/<version>/` et `plugin/`. Il vérifie la version assembly/manifeste et les empreintes des copies. **La copie vers `plugin/` peut déclencher un rechargement si Dalamud surveille ce chemin.** Une recompilation remplace les fichiers de la même version ; augmenter les versions du projet et du manifeste pour conserver un nouvel essai.
 
+Les chemins source du PDB sont neutralisés avec `PathMap` et la génération automatique de SourceLink est désactivée. Le build refuse un PDB contenant un chemin de profil utilisateur ; le commit de provenance reste inscrit dans `build-info.json`.
+
 Les contrôles utilisent les classes de production sur des allocations isolées. Les contrôles du binaire lisent le fichier du jeu sur disque, sans ouvrir son processus. Un client différent est refusé : reprendre [l’analyse native](native-mapping.md) avant de modifier les contrats.
 
 ## Interface
