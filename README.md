@@ -4,9 +4,9 @@
 
 Dézoomez davantage sur la mini-carte de FFXIV, choisissez une forme carrée et personnalisez son cadre. Masquez les marqueurs, le soleil/la lune, la météo ou les boutons, et réglez la taille des icônes.
 
-![Réglages de Minimap Zoom](docs/images/settings-map.png)
+![Mini-carte carrée en jeu avec Minimap Zoom](docs/images/minimap-in-game.png)
 
-*Panneau réel du plugin rendu avec ImGui hors jeu, police Segoe UI. Le rendu natif de la mini-carte reste à tester en jeu.*
+*Mini-carte carrée en jeu.*
 
 ## Installation et mises à jour
 
