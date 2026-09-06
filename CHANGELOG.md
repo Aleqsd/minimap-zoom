@@ -1,5 +1,11 @@
 # Historique
 
+## 0.4.1
+
+- Masquage indépendant de la météo et des boutons +, − et verrouillage du nord, avec leurs zones cliquables.
+- Restauration des contrôles sans changer le zoom ni l’état du verrouillage du nord.
+- Présentation fixe des réglages : suppression de l’onglet Style et des polices, couleurs et espacements personnalisables du panneau. Les anciens champs sont ignorés ; les préférences de la mini-carte sont conservées.
+
 ## 0.4.0
 
 - Réglages avec habillages LMeter, Obsidienne et Dalamud ; police, texte, fond et disposition personnalisables.

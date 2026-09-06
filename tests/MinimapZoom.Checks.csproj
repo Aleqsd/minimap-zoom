@@ -21,8 +21,8 @@
     <Compile Include="..\src\FramePixels.cs" Link="FramePixels.cs" />
     <Compile Include="..\src\MinimapFrame.cs" Link="MinimapFrame.cs" />
     <Compile Include="..\src\Configuration.cs" Link="Configuration.cs" />
-    <Compile Include="..\src\WindowPreferences.cs" Link="WindowPreferences.cs" />
     <Reference Include="Dalamud" HintPath="$(DalamudHome)\Dalamud.dll" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(DalamudHome)\Newtonsoft.Json.dll" />
     <Reference Include="FFXIVClientStructs" HintPath="$(DalamudHome)\FFXIVClientStructs.dll" />
     <Reference Include="InteropGenerator.Runtime" HintPath="$(DalamudHome)\InteropGenerator.Runtime.dll" />
     <None Include="..\src\MinimapZoom.json" Link="MinimapZoom.json" CopyToOutputDirectory="PreserveNewest" />

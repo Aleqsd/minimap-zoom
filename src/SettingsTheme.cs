@@ -9,22 +9,21 @@ internal sealed class SettingsTheme : IDisposable
     private int variables;
     public static float Scale => ImGui.GetFontSize() / 17f;
 
-    public SettingsTheme(WindowPreferences theme)
+    public SettingsTheme()
     {
         var scale = Scale;
-        Var(ImGuiStyleVar.WindowPadding, new Vector2(theme.Padding * scale));
+        Var(ImGuiStyleVar.WindowPadding, new Vector2(12 * scale));
         Var(ImGuiStyleVar.FramePadding, new Vector2(8, 5) * scale);
-        Var(ImGuiStyleVar.ItemSpacing, new Vector2(8, theme.RowSpacing) * scale);
+        Var(ImGuiStyleVar.ItemSpacing, new Vector2(8, 8) * scale);
         Var(ImGuiStyleVar.CellPadding, new Vector2(4, 2) * scale);
         Var(ImGuiStyleVar.WindowRounding, 3 * scale);
         Var(ImGuiStyleVar.FrameRounding, 2 * scale);
-        if (theme.Skin == WindowSkin.Dalamud) return;
-        var bg = Color(theme.Background); bg.W = theme.BackgroundOpacity;
-        var accent = Color(theme.Accent);
-        var surface = Vector4.Lerp(Color(theme.Background), new Vector4(1), 0.10f); surface.W = 1;
+        var bg = new Vector4(0x11 / 255f, 0x11 / 255f, 0x11 / 255f, 0.95f);
+        var accent = Color(0xFF00B9F7);
+        var surface = Color(0xFF292929);
         var hover = Vector4.Lerp(surface, accent, 0.20f); hover.W = 1;
         Push(ImGuiCol.WindowBg, bg);
-        Push(ImGuiCol.Text, Color(theme.Text));
+        Push(ImGuiCol.Text, Vector4.One);
         Push(ImGuiCol.TextDisabled, new Vector4(0.72f, 0.72f, 0.72f, 1));
         foreach (var color in new[] { ImGuiCol.TitleBg, ImGuiCol.TitleBgActive, ImGuiCol.Tab, ImGuiCol.FrameBg,
             ImGuiCol.Button, ImGuiCol.Header }) Push(color, surface);
@@ -45,20 +44,12 @@ internal sealed class SettingsTheme : IDisposable
         return Channel(c.W) << 24 | Channel(c.X) << 16 | Channel(c.Y) << 8 | Channel(c.Z);
     }
 
-    public static void Label(string text, WindowPreferences theme, bool align = false)
+    public static void Label(string text)
     {
         var size = ImGui.CalcTextSize(text);
         var position = ImGui.GetCursorScreenPos();
-        var width = Math.Max(size.X, ImGui.GetContentRegionAvail().X);
-        if (align && theme.AlignLabelsRight) position.X += Math.Max(0, width - size.X - 4 * Scale);
-        position += new Vector2(4 + theme.LabelOffsetX, 4 + theme.LabelOffsetY) * Scale;
+        position += new Vector2(4) * Scale;
         var draw = ImGui.GetWindowDrawList();
-        var relief = theme.Relief;
-        var shadow = new Vector2(Math.Max(1, Scale));
-        if (relief == LabelRelief.Shadow) draw.AddText(position + shadow, 0xD9000000, text);
-        if (relief == LabelRelief.Outline)
-            foreach (var offset in new[] { new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1) })
-                draw.AddText(position + offset * Math.Max(1, Scale), 0xFF000000, text);
         draw.AddText(position, ImGui.GetColorU32(ImGuiCol.Text), text);
         ImGui.Dummy(new Vector2(size.X + 8 * Scale, size.Y + 8 * Scale));
     }

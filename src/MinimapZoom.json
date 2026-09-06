@@ -2,7 +2,7 @@
   "Author": "Aleqsd",
   "Name": "Minimap Zoom",
   "InternalName": "MinimapZoom",
-  "AssemblyVersion": "0.4.0.0",
+  "AssemblyVersion": "0.4.1.0",
   "Description": "Zoom réglable, mini-carte carrée, cadres personnalisables, filtres de marqueurs et tailles d’icônes indépendantes. Démarrage discret et zoom mémorisé en option. Réglages dans /minizoom. Client 2026.08.11.0000.0000.",
   "Punchline": "Voir plus loin sur la mini-carte native.",
   "ApplicableVersion": "any",

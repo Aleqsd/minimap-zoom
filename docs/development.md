@@ -14,11 +14,11 @@ Les contrôles utilisent les classes de production sur des allocations isolées.
 
 ## Interface
 
-`SettingsWindow` utilise le système de fenêtres Dalamud. `SettingsPanel` transmet les changements à des actions ; le plugin les applique sur le thread du jeu avec sauvegarde différée. `SettingsTheme` centralise couleurs et dimensions. Les préférences de fenêtre sont indépendantes du cadre natif et survivent à `/minizoom off`.
+`SettingsWindow` utilise le système de fenêtres Dalamud. `SettingsPanel` transmet les changements à des actions ; le plugin les applique sur le thread du jeu avec sauvegarde différée. `SettingsTheme` centralise les couleurs et dimensions fixes du panneau. La personnalisation concerne uniquement la mini-carte native, son cadre et ses marqueurs.
 
-Les nouvelles installations utilisent LMeter ; les anciennes gardent les couleurs et la police Dalamud. Expressway et Segoe UI sont recherchées dans les polices Windows et chargées via l’atlas géré de Dalamud. Si une police manque ou échoue, le rendu utilise le repli Dalamud. Les changements de police reconstruisent un handle hors de `Draw`, puis libèrent le précédent. Aucun fichier de police n’est embarqué.
+La fenêtre utilise la police active de Dalamud et son échelle globale. Elle ne charge aucune police Windows et ne possède aucun choix de thème, police, couleurs ou disposition. Le déplacement et le redimensionnement habituels restent disponibles.
 
-La couleur/opacité du fond est indépendante du texte. Le contour ou l’ombre et les offsets concernent les libellés et l’état de la fenêtre ; ils ne modifient pas les textes natifs du jeu. Les lignes passent de deux colonnes à une disposition verticale quand la largeur disponible diminue.
+Le champ obsolète `WindowAppearance` de la version 0.4.0 est ignoré à la lecture, sans réinitialiser zoom, cadre, marqueurs ou démarrage. Il disparaît au prochain enregistrement. Les lignes passent de deux colonnes à une disposition verticale quand la largeur disponible diminue.
 
 ## Rendus hors jeu
 
@@ -28,7 +28,7 @@ dotnet run --project tools/Preview/Preview.csproj -c Release '-p:DalamudHome=D:\
 
 Cet outil utilise le même `SettingsPanel` et le même thème, avec le moteur ImGui local de Dalamud. Il rasterise ses vraies listes de dessin et injecte des événements souris pour vérifier les contrôles et le défilement. Les données sont fictives. La police Segoe UI provient de Windows uniquement pour cette exécution ; elle n’est ni copiée ni distribuée dans le dépôt.
 
-Les images publiques montrent ces réglages hors jeu. Elles ne prouvent pas le rendu du HUD ni le chargement des polices via les services Dalamud dans FFXIV. Les fichiers générés et dépendances copiées pour l’outil restent dans les dossiers ignorés.
+Le rendu d’une ancienne configuration avec des valeurs extrêmes de style est comparé pixel par pixel au défaut. Un changement du cadre natif vérifie aussi que les couleurs et dimensions du panneau restent identiques. Les images publiques ne prouvent pas le rendu du HUD ni l’intégration de la fenêtre dans FFXIV. Les fichiers générés et dépendances copiées pour l’outil restent dans les dossiers ignorés.
 
 ## Sources et droits
 

@@ -31,7 +31,6 @@ public sealed unsafe class Plugin : IDalamudPlugin
     private volatile bool disposing;
     private readonly WindowSystem windowSystem = new("MinimapZoom");
     private readonly SettingsWindow window;
-    private WindowPreferences windowPreferences;
     private bool enabled;
     private AppearanceSettings appearanceSettings;
     private bool enableZoomOnStartup;
@@ -48,9 +47,7 @@ public sealed unsafe class Plugin : IDalamudPlugin
     {
         var loaded = PluginInterface.GetPluginConfig() as Configuration;
         configuration = loaded ?? new Configuration();
-        windowPreferences = WindowPreferences.Resolve(configuration.WindowAppearance, loaded != null,
-            PluginInterface.UiBuilder.DefaultFontSpec.SizePx);
-        configuration.Version = 3;
+        configuration.Version = 4;
         requestedZoom = ZoomPolicy.Extended(configuration.LastZoom);
         appearanceSettings = configuration.Appearance;
         enableZoomOnStartup = configuration.EnableZoomOnStartup;
@@ -60,10 +57,8 @@ public sealed unsafe class Plugin : IDalamudPlugin
             () => requests.Enqueue(() => { enableZoomOnStartup = false; DisableAndRestore(); RememberZoom(); }),
             () => requests.Enqueue(ResetAll), ChangeAppearance,
             value => requests.Enqueue(() => { enableZoomOnStartup = value; RememberZoom(); }),
-            value => requests.Enqueue(() => { openWindowOnStartup = value; RememberZoom(); }),
-            value => requests.Enqueue(() => { windowPreferences = value.Normalize(); window!.SyncFont(windowPreferences); RememberZoom(); }));
-        window = new SettingsWindow(PluginInterface.UiBuilder.FontAtlas, () => view, () => windowPreferences,
-            actions, Diagnostic, () => compatibilityError == null);
+            value => requests.Enqueue(() => { openWindowOnStartup = value; RememberZoom(); }));
+        window = new SettingsWindow(() => view, actions, Diagnostic, () => compatibilityError == null);
         windowSystem.AddWindow(window);
         window.IsOpen = openWindowOnStartup;
         try
@@ -239,11 +234,12 @@ public sealed unsafe class Plugin : IDalamudPlugin
         configuration.PlayerScale = appearanceSettings.PlayerScale;
         configuration.HideFrame = appearanceSettings.HideFrame;
         configuration.HideSunMoon = appearanceSettings.HideSunMoon;
+        configuration.HideWeather = appearanceSettings.HideWeather;
+        configuration.HideButtons = appearanceSettings.HideButtons;
         configuration.FrameStyle = appearanceSettings.FrameStyle;
         configuration.FrameColor = appearanceSettings.FrameColor;
         configuration.EnableZoomOnStartup = enableZoomOnStartup;
         configuration.OpenWindowOnStartup = openWindowOnStartup;
-        configuration.WindowAppearance = windowPreferences;
         PluginInterface.SavePluginConfig(configuration);
         configDirty = false;
     }

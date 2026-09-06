@@ -13,6 +13,13 @@ internal static unsafe class NativeLayout
             sizeof(AgentHUD) != 0x4EC8 ||
             Marshal.OffsetOf<AgentHUD>(nameof(AgentHUD.MapMarkers)) != MarkerRangeScope.MarkerVectorOffset ||
             Marshal.OffsetOf<AtkResNode>(nameof(AtkResNode.NodeFlags)) != 0xAE ||
+            Marshal.OffsetOf<AtkComponentNode>(nameof(AtkComponentNode.Component)) != 0xC0 ||
+            Marshal.OffsetOf<AtkComponentBase>(nameof(AtkComponentBase.UldManager)) != 0x08 ||
+            Marshal.OffsetOf<AtkComponentBase>(nameof(AtkComponentBase.AtkResNode)) != 0xA0 ||
+            Marshal.OffsetOf<AtkUldManager>(nameof(AtkUldManager.NodeListCount)) != 0x42 ||
+            Marshal.OffsetOf<AtkUldManager>(nameof(AtkUldManager.NodeList)) != 0x50 ||
+            Marshal.OffsetOf<AtkUldManager>(nameof(AtkUldManager.RootNode)) != 0x78 ||
+            Marshal.OffsetOf<AtkUldManager>(nameof(AtkUldManager.NodeListSize)) != 0x84 ||
             (ushort)NodeFlags.Visible != 0x10 ||
             Marshal.OffsetOf<AddonNaviMap>(nameof(AddonNaviMap.MarkerPositionScaling)) != 0x3A78 ||
             Marshal.OffsetOf<AddonNaviMap>(nameof(AddonNaviMap.NaviMap)) != 0x238 ||

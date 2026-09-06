@@ -1,6 +1,6 @@
 # Minimap Zoom
 
-Dézoomez davantage sur la mini-carte de FFXIV, choisissez une forme carrée et personnalisez son cadre. Masquez les marqueurs ou la décoration soleil/lune, et réglez la taille des icônes.
+Dézoomez davantage sur la mini-carte de FFXIV, choisissez une forme carrée et personnalisez son cadre. Masquez les marqueurs, le soleil/la lune, la météo ou les boutons, et réglez la taille des icônes.
 
 ![Réglages de Minimap Zoom](docs/images/settings-map.png)
 
@@ -17,10 +17,10 @@ Pour une mise à jour, remplacer l’ancienne version et garder une seule entré
 
 ## Réglages
 
-- **Carte** : zoom de 0,25 à 2, forme, cadre et soleil/lune.
+- **Carte** : zoom de 0,25 à 2, forme, cadre ; masquage indépendant du soleil/de la lune, de la météo et des boutons (+, − et verrouillage du nord).
 - **Marqueurs** : tailles séparées, masquage global ou par catégorie. Votre personnage reste visible.
-- **Style** : LMeter, Obsidienne ou Dalamud ; police, couleurs et disposition de la fenêtre. Expressway est utilisée si elle est installée, avec repli Dalamud.
+- **Démarrage** : réactivation du zoom et ouverture des réglages en option.
 
-**Version expérimentale 0.4.0**, pour Dalamud API 15 et le client `2026.08.11.0000.0000`. La portée des icônes fixes suit le dézoom ; la limite native de 100 marqueurs et les données disponibles côté client restent applicables. Les anciennes configurations conservent l’apparence Dalamud jusqu’au choix d’un autre habillage.
+**Version expérimentale 0.4.1**, pour Dalamud API 15 et le client `2026.08.11.0000.0000`. La portée des icônes fixes suit le dézoom ; la limite native de 100 marqueurs et les données disponibles côté client restent applicables. Les réglages gardent une présentation fixe qui suit l’échelle globale Dalamud. Les préférences de la mini-carte sont conservées lors de la mise à jour.
 
 [Compiler et vérifier](docs/development.md) · [Validation](docs/validation.md) · [Historique](CHANGELOG.md)

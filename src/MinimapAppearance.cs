@@ -59,6 +59,13 @@ internal sealed unsafe class MinimapAppearance
         owner = (nint)addon;
         RestoreMarkerOverrides(addon);
         if (settings.HideSunMoon) Hide((AtkResNode*)addon->Sun, hiddenDecorations);
+        if (settings.HideWeather) HideControl(FindNode(addon, 14));
+        if (settings.HideButtons)
+        {
+            HideControl(FindNode(addon, 2)); // Zoom in.
+            HideControl(FindNode(addon, 3)); // Zoom out.
+            HideControl(FindNode(addon, 4)); // Lock north.
+        }
 
         if (settings.Square)
         {
@@ -173,6 +180,25 @@ internal sealed unsafe class MinimapAppearance
             if (node != null && node->NodeId == nodeId) return node;
         }
         return null;
+    }
+
+    private void HideControl(AtkResNode* node)
+    {
+        if (node == null || hiddenDecorations.ContainsKey((nint)node)) return;
+        Hide(node, hiddenDecorations);
+        if ((ushort)node->Type < 1000) return;
+        var component = ((AtkComponentNode*)node)->Component;
+        if (component == null) return;
+        var manager = &component->UldManager;
+        if (manager->NodeListCount > manager->NodeListSize ||
+            (manager->NodeListCount != 0 && manager->NodeList == null))
+            throw new NotSupportedException("Les contrôles de cette mini-carte ne sont pas compatibles.");
+        // The renderer and hit testing use children directly. Keep component state intact,
+        // including enabled/checked flags, and mask both visual and collision nodes.
+        HideControl(manager->RootNode);
+        HideControl(component->AtkResNode);
+        for (var index = 0; index < manager->NodeListCount; index++)
+            HideControl(manager->NodeList[index]);
     }
 
     private static void Hide(AtkResNode* node, Dictionary<nint, VisibilitySnapshot> snapshots)

@@ -76,6 +76,79 @@ internal static unsafe class AppearanceChecks
             Require((fixture.Sun->NodeFlags & NodeFlags.Visible) != 0 && (fixture.Sun->DrawFlags & Hidden) == 0 &&
                 fixture.Sun->Rotation == 2f, "Decoration restoration lost visibility or native animation");
         });
+        check("Weather, buttons and sun hide independently, including visuals and collision nodes", () =>
+        {
+            using var fixture = new Fixture();
+            for (var flags = 0; flags < 8; flags++)
+            {
+                var settings = AppearanceSettings.Default with { HideSunMoon = (flags & 1) != 0,
+                    HideWeather = (flags & 2) != 0, HideButtons = (flags & 4) != 0 };
+                fixture.Appearance.Apply(fixture.Addon, settings);
+                Require(((fixture.Sun->NodeFlags & NodeFlags.Visible) == 0) == settings.HideSunMoon, "Sun option coupled to another control");
+                foreach (var address in fixture.ControlNodes)
+                {
+                    var node = (AtkResNode*)address;
+                    var hide = node->NodeId == 14 ? settings.HideWeather : settings.HideButtons;
+                    Require(((node->NodeFlags & NodeFlags.Visible) == 0) == hide && ((node->DrawFlags & Hidden) != 0) == hide,
+                        "Control visibility mismatch");
+                    var component = ((AtkComponentNode*)node)->Component;
+                    for (var i = 0; i < component->UldManager.NodeListCount; i++)
+                    {
+                        var child = component->UldManager.NodeList[i];
+                        Require(((child->NodeFlags & NodeFlags.Visible) == 0) == hide && ((child->DrawFlags & Hidden) != 0) == hide,
+                            "Control leaf or collision remains active");
+                    }
+                }
+                Require(fixture.Created == 0 && (fixture.Marker->NodeFlags & NodeFlags.Visible) != 0 &&
+                    (fixture.Frame->DrawFlags & Hidden) == 0, "Hiding controls changed the map or markers");
+            }
+        });
+        check("Control restoration preserves native visibility, zoom, north lock and enabled state", () =>
+        {
+            using var fixture = new Fixture();
+            var weather = fixture.Weather->Component;
+            var unused = weather->UldManager.NodeList[2];
+            unused->NodeFlags &= ~NodeFlags.Visible;
+            unused->DrawFlags |= Hidden;
+            var settings = AppearanceSettings.Default with { HideWeather = true, HideButtons = true };
+            fixture.Addon->Param = 0xA5;
+            fixture.Addon->MarkerPositionScaling = 0.25f;
+            for (var frame = 0; frame < 30; frame++)
+            {
+                fixture.Appearance.RestoreMarkerOverrides(fixture.Addon); // PreUpdate/PreRequestedUpdate.
+                weather->ComponentFlags = (uint)(frame + 1); // New native enabled state.
+                weather->AtkResNode->NodeFlags |= NodeFlags.Visible;
+                weather->AtkResNode->DrawFlags &= ~Hidden;
+                fixture.Appearance.Apply(fixture.Addon, settings); // PostUpdate / PreDraw.
+                weather->AtkResNode->DrawFlags |= 1u << 21;
+            }
+            fixture.Appearance.Apply(fixture.Addon, AppearanceSettings.Default);
+            fixture.Appearance.Restore(fixture.Addon);
+            Require((unused->NodeFlags & NodeFlags.Visible) == 0 && (unused->DrawFlags & Hidden) != 0,
+                "An unused control image was revealed");
+            Require((weather->AtkResNode->NodeFlags & NodeFlags.Visible) != 0 &&
+                (weather->AtkResNode->DrawFlags & (Hidden | (1u << 21))) == (1u << 21), "Collision or unrelated flags were not restored");
+            Require(weather->ComponentFlags == 30 && fixture.Addon->Param == 0xA5 && fixture.Addon->MarkerPositionScaling == 0.25f,
+                "Hiding changed button state, north lock or zoom");
+        });
+        check("Nested control components are hidden once and malformed node lists can restore safely", () =>
+        {
+            using var fixture = new Fixture();
+            var nested = fixture.CreateControl(99);
+            fixture.Weather->Component->UldManager.NodeList[2] = (AtkResNode*)nested;
+            var settings = AppearanceSettings.Default with { HideWeather = true };
+            fixture.Appearance.Apply(fixture.Addon, settings);
+            Require((nested->Component->AtkResNode->NodeFlags & NodeFlags.Visible) == 0, "Nested hit area escaped masking");
+            fixture.Appearance.Restore(fixture.Addon);
+            var manager = &nested->Component->UldManager;
+            manager->NodeListCount = (ushort)(manager->NodeListSize + 1);
+            var rejected = false;
+            try { fixture.Appearance.Apply(fixture.Addon, settings); }
+            catch (NotSupportedException) { rejected = true; }
+            fixture.Appearance.Restore(fixture.Addon);
+            Require(rejected && (fixture.Weather->NodeFlags & NodeFlags.Visible) != 0, "Invalid list read or partial mask leaked");
+            manager->NodeListCount = manager->NodeListSize;
+        });
         check("Hiding reaches every flattened icon, label, area and edge child and restores visibility", () =>
         {
             using var fixture = new Fixture();
@@ -321,33 +394,34 @@ internal static unsafe class AppearanceChecks
         check("New preferences survive JSON save and reload", () =>
         {
             var config = new Configuration { HiddenCategories = MarkerCategory.Shops | MarkerCategory.AvailableSideQuests,
-                MarkerScale = 0.75f, PlayerScale = 1.5f, HideFrame = true, HideSunMoon = true, FrameStyle = SquareFrameStyle.Corners,
+                MarkerScale = 0.75f, PlayerScale = 1.5f, HideFrame = true, HideSunMoon = true, HideWeather = true,
+                HideButtons = true, FrameStyle = SquareFrameStyle.Corners,
                 FrameColor = 0x80ABCDEF, EnableZoomOnStartup = true, OpenWindowOnStartup = false };
             var roundtrip = JsonSerializer.Deserialize<Configuration>(JsonSerializer.Serialize(config))!;
             Require(roundtrip.Appearance == config.Appearance && roundtrip.EnableZoomOnStartup && !roundtrip.OpenWindowOnStartup, "New settings lost on reload");
         });
-        check("Window migration keeps existing appearance and new users receive LMeter", () =>
+        check("Legacy settings appearance is ignored without losing native preferences", () =>
         {
-            Require(WindowPreferences.Resolve(null, false).Skin == WindowSkin.LMeter, "New skin default missing");
-            var existing = WindowPreferences.Resolve(null, true, 20);
-            Require(existing.Skin == WindowSkin.Dalamud && existing.Typeface == WindowTypeface.Dalamud && existing.FontSize == 20,
-                "Existing Dalamud appearance changed");
-            var saved = WindowPreferences.Preset(WindowSkin.Obsidienne) with { LabelOffsetX = 3, BackgroundOpacity = 0.6f };
-            var config = new Configuration { LastZoom = 0.25f, HideSunMoon = true, WindowAppearance = saved };
-            var reloaded = JsonSerializer.Deserialize<Configuration>(JsonSerializer.Serialize(config))!;
-            Require(WindowPreferences.Resolve(reloaded.WindowAppearance, true) == saved && reloaded.LastZoom == 0.25f &&
-                reloaded.HideSunMoon, "Window preferences or independent native settings lost");
-        });
-        check("Malformed window preferences stay bounded and background opacity does not fade text", () =>
-        {
-            var value = new WindowPreferences { FontSize = float.NaN, Padding = 999, RowSpacing = -4, LabelOffsetX = 999,
-                LabelOffsetY = float.NegativeInfinity, BackgroundOpacity = 0.4f, Text = 0x00123456 }.Normalize();
-            Require(value.FontSize == 17 && value.Padding == 20 && value.RowSpacing == 4 && value.LabelOffsetX == 4 &&
-                value.LabelOffsetY == 0 && value.BackgroundOpacity == 0.4f && value.Text == 0xFF123456,
-                "Invalid preferences escaped bounds or text followed background alpha");
+            const string legacyJson = """
+                {"Version":3,"LastZoom":0.25,"SquareMinimap":true,"HideSunMoon":true,
+                 "MarkerScale":0.75,"FrameStyle":4,"FrameColor":2158743023,"EnableZoomOnStartup":true,
+                 "WindowAppearance":{"$type":"MinimapZoom.WindowPreferences, MinimapZoom","Skin":1,"Typeface":2,"FontSize":26,"BackgroundOpacity":0.2,
+                   "Text":4278190335,"LabelOffsetX":4,"AlignLabelsRight":true}}
+                """;
+            var old = JsonSerializer.Deserialize<Configuration>(legacyJson)!;
+            var nativeReload = Newtonsoft.Json.JsonConvert.DeserializeObject<Configuration>(legacyJson,
+                new Newtonsoft.Json.JsonSerializerSettings { TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto })!;
+            Require(nativeReload.Appearance == old.Appearance && nativeReload.LastZoom == old.LastZoom,
+                "Newtonsoft could not ignore obsolete typed window preferences");
+            Require(old.LastZoom == 0.25f && old.Appearance.Square && old.HideSunMoon && old.MarkerScale == 0.75f &&
+                old.FrameStyle == SquareFrameStyle.Corners && old.FrameColor == 2158743023 && old.EnableZoomOnStartup,
+                "Removing window preferences lost functional settings");
+            Require(!old.HideWeather && !old.HideButtons, "New hide options were silently enabled");
+            var saved = JsonSerializer.Serialize(old);
+            Require(!saved.Contains("WindowAppearance") && JsonSerializer.Deserialize<Configuration>(saved)!.Appearance == old.Appearance,
+                "Obsolete styling was persisted or native preferences lost on reload");
         });
     }
-
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
@@ -362,6 +436,8 @@ internal static unsafe class AppearanceChecks
         public AtkResNode* Border;
         public AtkImageNode* Frame;
         public AtkImageNode* Sun;
+        public AtkComponentNode* Weather;
+        public nint[] ControlNodes;
         public AtkComponentNode* Marker;
         public AtkComponentNode* Edge;
         public AtkComponentNode* Player;
@@ -427,11 +503,14 @@ internal static unsafe class AppearanceChecks
             Frame->ScaleX = Frame->ScaleY = 1;
             Frame->PartsList = OriginalParts;
             Frame->PartId = 1;
-            var nodes = (AtkResNode**)Allocate<nint>(2);
+            Weather = CreateControl(14);
+            ControlNodes = [(nint)Weather, (nint)CreateControl(2), (nint)CreateControl(3), (nint)CreateControl(4)];
+            var nodes = (AtkResNode**)Allocate<nint>(6);
             nodes[0] = Border;
             nodes[1] = (AtkResNode*)Frame;
             Addon->UldManager.NodeList = nodes;
-            Addon->UldManager.NodeListCount = 2;
+            for (var i = 0; i < ControlNodes.Length; i++) nodes[i + 2] = (AtkResNode*)ControlNodes[i];
+            Addon->UldManager.NodeListCount = Addon->UldManager.NodeListSize = 6;
             Addon->NaviMap.NaviMapMarkers[0].ComponentNode = Marker;
             Addon->NaviMap.NaviMapMarkers[100].ComponentNode = Player;
             Addon->NaviMap.PlayerPin = Player;
@@ -450,6 +529,31 @@ internal static unsafe class AppearanceChecks
                 DetachedBeforeRelease = Mask->PartsList == OriginalParts;
                 FrameDetachedBeforeRelease = Frame->PartsList == OriginalParts;
             });
+        }
+
+        public AtkComponentNode* CreateControl(uint id)
+        {
+            var owner = Allocate<AtkComponentNode>();
+            owner->NodeId = id;
+            owner->Type = NodeType.Component;
+            owner->NodeFlags = NodeFlags.Visible;
+            var component = Allocate<AtkComponentBase>();
+            owner->Component = component;
+            component->OwnerNode = owner;
+            var nodes = (AtkResNode**)Allocate<nint>(4);
+            for (var i = 0; i < 4; i++)
+            {
+                nodes[i] = Allocate<AtkResNode>();
+                nodes[i]->NodeId = (uint)(i + 1);
+                nodes[i]->NodeFlags = NodeFlags.Visible;
+                nodes[i]->Type = i == 0 ? NodeType.Res : i == 3 ? NodeType.Collision : NodeType.Image;
+                nodes[i]->ParentNode = (AtkResNode*)owner;
+            }
+            component->UldManager.NodeList = nodes;
+            component->UldManager.RootNode = nodes[0];
+            component->UldManager.NodeListCount = component->UldManager.NodeListSize = 4;
+            component->AtkResNode = nodes[3];
+            return owner;
         }
 
         private T* Allocate<T>(int count = 1) where T : unmanaged

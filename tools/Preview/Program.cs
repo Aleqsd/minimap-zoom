@@ -14,21 +14,23 @@ internal static unsafe class Program
         using var native = new NativeContext(Path.Combine(args[0], "cimgui.dll"));
         ImGui.InitApi(native);
         var results = new List<object>();
-        foreach (var (name, scale, width, tab, skin, ready, hidden) in new[]
+        string? baselineTheme = null;
+        foreach (var (name, scale, width, tab, ready, hidden) in new[]
         {
-            ("map-100", 1f, 550, 0, WindowSkin.LMeter, true, false),
-            ("map-150", 1.5f, 550, 0, WindowSkin.LMeter, true, false),
-            ("map-200", 2f, 550, 0, WindowSkin.LMeter, true, false),
-            ("map-small", 1f, 360, 0, WindowSkin.LMeter, true, false),
-            ("map-fixed", 1f, 550, 0, WindowSkin.LMeter, true, false),
-            ("map-minimum", 1f, 360, 0, WindowSkin.LMeter, true, false),
-            ("markers", 1f, 550, 1, WindowSkin.LMeter, true, false),
-            ("markers-hidden", 1f, 550, 1, WindowSkin.LMeter, true, true),
-            ("style", 1f, 550, 2, WindowSkin.LMeter, true, false),
-            ("startup", 1f, 550, 3, WindowSkin.LMeter, true, false),
-            ("obsidienne", 1f, 550, 0, WindowSkin.Obsidienne, true, false),
-            ("waiting", 1f, 550, 0, WindowSkin.LMeter, false, false),
-            ("incompatible", 1f, 550, 0, WindowSkin.LMeter, false, true),
+            ("map-100", 1f, 550, 0, true, false),
+            ("map-150", 1.5f, 550, 0, true, false),
+            ("map-200", 2f, 550, 0, true, false),
+            ("map-small", 1f, 360, 0, true, false),
+            ("map-fixed", 1f, 550, 0, true, false),
+            ("map-minimum", 1f, 360, 0, true, false),
+            ("markers", 1f, 550, 1, true, false),
+            ("markers-hidden", 1f, 550, 1, true, true),
+
+            ("startup", 1f, 550, 2, true, false),
+            ("legacy-settings", 1f, 550, 0, true, false),
+            ("native-frame-color", 1f, 550, 0, true, false),
+            ("waiting", 1f, 550, 0, false, false),
+            ("incompatible", 1f, 550, 0, false, true),
         })
         {
             var context = ImGui.CreateContext();
@@ -56,28 +58,46 @@ internal static unsafe class Program
                 byte* texture; int textureWidth, textureHeight;
                 io.Fonts.GetTexDataAsRGBA32(0, &texture, &textureWidth, &textureHeight);
                 io.Fonts.SetTexID(0, new ImTextureID(1UL));
-                var theme = WindowPreferences.Preset(skin);
-                var state = new ViewState(true, ready, 0.25f, ready ? "Zoom personnalisé actif" : hidden ?
+
+                var saved = new Configuration { LastZoom = 0.25f, SquareMinimap = true, FrameStyle = SquareFrameStyle.Corners,
+                    HideMarkers = hidden, HiddenCategories = MarkerCategory.Shops, HideSunMoon = true };
+                if (name == "legacy-settings")
+                {
+                    var json = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(saved))!;
+                    json["WindowAppearance"] = System.Text.Json.Nodes.JsonNode.Parse("""
+                        {"Skin":1,"Typeface":2,"FontSize":26,"Background":4294901760,"BackgroundOpacity":0.15,
+                         "Text":4278255360,"Accent":4294902015,"Relief":2,"Padding":20,"RowSpacing":16,
+                         "LabelOffsetX":4,"LabelOffsetY":-4,"AlignLabelsRight":true}
+                        """);
+                    saved = JsonSerializer.Deserialize<Configuration>(json.ToJsonString())!;
+                }
+                if (name == "native-frame-color") { saved.FrameColor = 0xFFEB5577; saved.FrameStyle = SquareFrameStyle.Double; }
+                var state = new ViewState(true, ready, saved.LastZoom, ready ? "Zoom personnalisé actif" : hidden ?
                     "Client incompatible : effets désactivés" : "En attente de la mini-carte…",
-                    AppearanceSettings.Default with { Square = true, FrameStyle = SquareFrameStyle.Corners, HideMarkers = hidden,
-                        HiddenCategories = MarkerCategory.Shops, HideSunMoon = true });
+                    saved.Appearance);
                 var panel = new SettingsPanel { SelectTab = tab };
                 var actions = new SettingsActions(v => state = state with { Zoom = v }, () => state = state with { Enabled = false },
                     () => state = state with { Appearance = AppearanceSettings.Default },
                     change => state = state with { Appearance = change(state.Appearance).Normalize() },
-                    v => state = state with { AutoZoom = v }, v => state = state with { OpenOnLoad = v }, v => theme = v.Normalize());
+                    v => state = state with { AutoZoom = v }, v => state = state with { OpenOnLoad = v });
                 float endY = 0, scrollMax = 0, scrollY = 0;
                 // Warm up layout, tabs and auto-fitting before rendering the same production panel.
                 void RenderFrame()
                 {
                     ImGui.NewFrame();
-                    using (new SettingsTheme(theme))
+                    using (new SettingsTheme())
                     {
+                        var themeSignature = $"{ImGui.GetStyle().WindowPadding}/{ImGui.GetStyle().ItemSpacing}/{ImGui.GetFontSize()}";
+                        for (var color = 0; color < (int)ImGuiCol.Count; color++)
+                            themeSignature += $"/{ImGui.GetStyle().Colors[color]}";
+                        if (name == "map-100") baselineTheme = themeSignature;
+                        if (name is "legacy-settings" or "native-frame-color")
+                            Require(themeSignature == baselineTheme, "Settings style changed with native or legacy configuration");
                         ImGui.SetNextWindowPos(new Vector2(12 * scale), ImGuiCond.Always);
                         var fixedHeight = name == "map-fixed" ? 620 : name == "map-minimum" ? 320 : 0;
                         ImGui.SetNextWindowSize(new Vector2(width * scale, fixedHeight * scale), ImGuiCond.Always);
-                        ImGui.Begin("Minimap Zoom v0.4.0", (fixedHeight == 0 ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None) | ImGuiWindowFlags.NoSavedSettings);
-                        panel.Draw(state, theme, actions, "Aperçu hors jeu : Segoe UI. Expressway non fournie.",
+                        ImGui.Begin($"Minimap Zoom v{typeof(Program).Assembly.GetName().Version!.ToString(3)}", (fixedHeight == 0 ? ImGuiWindowFlags.AlwaysAutoResize : ImGuiWindowFlags.None) | ImGuiWindowFlags.NoSavedSettings);
+                        panel.Draw(state, actions,
                             "Aperçu ImGui hors jeu. Données fictives. Le rendu natif se valide en jeu.", !(hidden && !ready));
                         endY = ImGui.GetWindowPos().Y + ImGui.GetWindowHeight();
                         scrollMax = ImGui.GetScrollMaxY();
@@ -91,6 +111,10 @@ internal static unsafe class Program
                 var height = Math.Min(pixelsHeight, (int)MathF.Ceiling(endY + 12 * scale));
                 var output = Path.Combine(args[1], name + ".png");
                 CpuRenderer.Save(ImGui.GetDrawData(), pixelsWidth, height, texture, textureWidth, textureHeight, output);
+                var capturedTab = panel.ActiveTab;
+                if (name == "legacy-settings")
+                    Require(File.ReadAllBytes(output).SequenceEqual(File.ReadAllBytes(Path.Combine(args[1], "map-100.png"))),
+                        "Legacy settings customization changed the rendered panel");
                 void Click(float x, float y)
                 {
                     io.AddMousePosEvent(x, y); RenderFrame();
@@ -99,6 +123,10 @@ internal static unsafe class Program
                 }
                 if (name == "map-100")
                 {
+                    Click(283, 405);
+                    Require(state.Appearance.HideWeather && !state.Appearance.HideButtons, "Weather checkbox did not change independently");
+                    Click(283, 446);
+                    Require(state.Appearance.HideWeather && state.Appearance.HideButtons, "Buttons checkbox did not respond");
                     Click(283, 364);
                     Require(!state.Appearance.HideSunMoon, "Sun/moon checkbox did not dispatch its change");
                     Click(283, 323);
@@ -113,7 +141,7 @@ internal static unsafe class Program
                     Require(state.Appearance.HiddenCategories == MarkerCategory.Shops, "Disabled category remained interactive");
                     Click(283, 236); Click(283, 341);
                     Require(!state.Appearance.HideMarkers && state.Appearance.HiddenCategories == MarkerCategory.None, "Category did not respond after enabling");
-                    Console.WriteLine("PASS actual ImGui mouse input: sun/moon, frame, zoom, tabs, global mask and disabled/enabled category.");
+                    Console.WriteLine("PASS actual ImGui mouse input: weather, buttons, sun/moon, frame, zoom, tabs, global mask and disabled/enabled category.");
                 }
                 if (name == "map-minimum")
                 {
@@ -126,7 +154,7 @@ internal static unsafe class Program
                     Console.WriteLine("PASS actual ImGui mouse wheel: small window scrolls to the restoration controls.");
                 }
                 if (name == "map-minimum" && scrollMax <= 0) throw new InvalidOperationException("Small window has no scrolling");
-                results.Add(new { name, scale, width = pixelsWidth, height, scrollMax, panel.ActiveTab, vertices = ImGui.GetDrawData().TotalVtxCount });
+                results.Add(new { name, scale, width = pixelsWidth, height, scrollMax, capturedTab });
                 Console.WriteLine($"Rendered {name}: {pixelsWidth}x{height}, tab {panel.ActiveTab}");
             }
             finally { ImGui.DestroyContext(context); }
