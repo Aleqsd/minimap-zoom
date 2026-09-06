@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DalamudHome Condition="'$(DalamudHome)' == ''">$(APPDATA)\XIVLauncher\addon\Hooks\dev</DalamudHome>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\src\ZoomPolicy.cs" Link="ZoomPolicy.cs" />
+    <Compile Include="..\src\NativeContracts.cs" Link="NativeContracts.cs" />
+    <Compile Include="..\src\MarkerRangeScope.cs" Link="MarkerRangeScope.cs" />
+    <Compile Include="..\src\NativeLayout.cs" Link="NativeLayout.cs" />
+    <Compile Include="..\src\NativeZoomOperations.cs" Link="NativeZoomOperations.cs" />
+    <Compile Include="..\src\SquareMaskPixels.cs" Link="SquareMaskPixels.cs" />
+    <Compile Include="..\src\MinimapAppearance.cs" Link="MinimapAppearance.cs" />
+    <Compile Include="..\src\MarkerPolicy.cs" Link="MarkerPolicy.cs" />
+    <Compile Include="..\src\AppearanceSettings.cs" Link="AppearanceSettings.cs" />
+    <Compile Include="..\src\FramePixels.cs" Link="FramePixels.cs" />
+    <Compile Include="..\src\MinimapFrame.cs" Link="MinimapFrame.cs" />
+    <Compile Include="..\src\Configuration.cs" Link="Configuration.cs" />
+    <Compile Include="..\src\WindowPreferences.cs" Link="WindowPreferences.cs" />
+    <Reference Include="Dalamud" HintPath="$(DalamudHome)\Dalamud.dll" />
+    <Reference Include="FFXIVClientStructs" HintPath="$(DalamudHome)\FFXIVClientStructs.dll" />
+    <Reference Include="InteropGenerator.Runtime" HintPath="$(DalamudHome)\InteropGenerator.Runtime.dll" />
+    <None Include="..\src\MinimapZoom.json" Link="MinimapZoom.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

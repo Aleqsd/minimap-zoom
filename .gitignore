@@ -1,0 +1,10 @@
+bin/
+obj/
+plugin/
+artifacts/
+releases/
+.tools/
+.vs/
+*.user
+*.suo
+*.log

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>MinimapZoom</AssemblyName>
+    <RootNamespace>MinimapZoom</RootNamespace>
+    <Version>0.4.0</Version>
+    <Author>Aleqsd</Author>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/_/src</PathMap>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <DalamudHome Condition="'$(DalamudHome)' == ''">$(APPDATA)\XIVLauncher\addon\Hooks\dev</DalamudHome>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Dalamud" HintPath="$(DalamudHome)\Dalamud.dll" Private="false" />
+    <Reference Include="Dalamud.Bindings.ImGui" HintPath="$(DalamudHome)\Dalamud.Bindings.ImGui.dll" Private="false" />
+    <Reference Include="FFXIVClientStructs" HintPath="$(DalamudHome)\FFXIVClientStructs.dll" Private="false" />
+    <Reference Include="InteropGenerator.Runtime" HintPath="$(DalamudHome)\InteropGenerator.Runtime.dll" Private="false" />
+    <Reference Include="Lumina" HintPath="$(DalamudHome)\Lumina.dll" Private="false" />
+    <Reference Include="Lumina.Excel" HintPath="$(DalamudHome)\Lumina.Excel.dll" Private="false" />
+    <Reference Include="HexaGen.Runtime" HintPath="$(DalamudHome)\HexaGen.Runtime.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="MinimapZoom.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="CheckDalamud" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(DalamudHome)\Dalamud.dll')" Text="Specify -p:DalamudHome with a Dalamud API 15 directory, or use build.ps1." />
+  </Target>
+</Project>

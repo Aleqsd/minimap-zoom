@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0-windows</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.4.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/SettingsPanel.cs" Link="SettingsPanel.cs" />
+    <Compile Include="../../src/SettingsTheme.cs" Link="SettingsTheme.cs" />
+    <Compile Include="../../src/WindowPreferences.cs" Link="WindowPreferences.cs" />
+    <Compile Include="../../src/AppearanceSettings.cs" Link="AppearanceSettings.cs" />
+    <Compile Include="../../src/MarkerPolicy.cs" Link="MarkerPolicy.cs" />
+    <Reference Include="Dalamud.Bindings.ImGui" HintPath="$(DalamudHome)/Dalamud.Bindings.ImGui.dll" />
+    <Reference Include="HexaGen.Runtime" HintPath="$(DalamudHome)/HexaGen.Runtime.dll" />
+    <None Include="$(DalamudHome)/cimgui.dll" Link="cimgui.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
