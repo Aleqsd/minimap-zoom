@@ -14,6 +14,14 @@ Les chemins source du PDB sont neutralisés avec `PathMap` et la génération au
 
 Les contrôles utilisent les classes de production sur des allocations isolées. Les contrôles du binaire lisent le fichier du jeu sur disque, sans ouvrir son processus. Un client différent est refusé : reprendre [l’analyse native](native-mapping.md) avant de modifier les contrats.
 
+## Essais avec une DLL locale
+
+L’installation courante et les mises à jour passent par le [dépôt personnalisé](../README.md#installation-et-mises-à-jour). Pour tester une compilation locale, conserver `MinimapZoom.json` à côté de la DLL, ajouter son chemin complet dans `/xlsettings` → **Experimental** → **Dev Plugin Locations**, puis scanner les plugins de développement dans `/xlplugins`.
+
+Charger une seule copie de Minimap Zoom à la fois, catalogue ou développement. Pour revenir au catalogue, désactiver la copie de développement et retirer uniquement son entrée avant l’installation normale. Conserver les fichiers de configuration.
+
+Une release dans ce dépôt source ne met pas automatiquement à jour le catalogue. Sa maintenance reçoit la version, le tag et le commit exacts, le ZIP et ses SHA-256 (archive et DLL), ainsi qu’un bref changelog. Les archives d’installation sont vérifiées et publiées avant l’index ; les versions déjà publiées ne sont pas remplacées.
+
 ## Interface
 
 `SettingsWindow` utilise le système de fenêtres Dalamud. `SettingsPanel` transmet les changements à des actions ; le plugin les applique sur le thread du jeu avec sauvegarde différée. `SettingsTheme` centralise les couleurs et dimensions fixes du panneau. La personnalisation concerne uniquement la mini-carte native, son cadre et ses marqueurs.
@@ -36,4 +44,6 @@ Le rendu d’une ancienne configuration avec des valeurs extrêmes de style est 
 
 Le code de ce dépôt et ses textures géométriques sont sous licence MIT. Les bibliothèques [Dalamud](https://github.com/goatcorp/Dalamud), [FFXIVClientStructs](https://github.com/aers/FFXIVClientStructs) et leurs dépendances restent fournies séparément par Dalamud. Les noms, données et textures de FFXIV appartiennent à leurs ayants droit ; aucune texture extraite du jeu n’est redistribuée ici. Les sources utilisées pour identifier les fonctions et icônes sont citées dans l’analyse native ; aucun code de Compass n’a été repris.
 
-Le plugin a été développé avec une assistance IA. La release GitHub est un essai indépendant, sans soumission au catalogue Dalamud.
+L’[icône du plugin](https://github.com/Aleqsd/dalamud-plugins/blob/main/icons/MinimapZoom.svg) est un dessin original distribué sous licence MIT par le catalogue personnalisé.
+
+Le plugin a été développé avec une assistance IA. La release GitHub est un essai indépendant, sans soumission au catalogue officiel Dalamud.
