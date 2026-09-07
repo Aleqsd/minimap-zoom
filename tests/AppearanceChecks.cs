@@ -12,6 +12,69 @@ internal static unsafe class AppearanceChecks
 
     public static void Run(Action<string, Action> check)
     {
+        check("Native crowding applies only at extended zoom and restores sizes without moving markers", () =>
+        {
+            using var fixture = new Fixture();
+            var other = fixture.CreateControl(90);
+            other->X = 3; other->Y = 4; other->ScaleX = other->ScaleY = 1;
+            fixture.Addon->NaviMap.NaviMapMarkers[1].ComponentNode = other;
+            fixture.Addon->NaviMap.NaviMapMarkers[1].IconId = 999999;
+            fixture.Addon->NaviMap.NaviMapMarkers[0].IconId = 60412;
+            fixture.Addon->MarkerPositionScaling = 0.25f;
+            var settings = AppearanceSettings.Default with { ReduceCrowding = true };
+            fixture.Appearance.Apply(fixture.Addon, settings);
+            Require(fixture.Marker->ScaleX == 0.65f && fixture.Edge->ScaleX == 0.65f && other->ScaleX == 1 &&
+                other->X == 3 && other->Y == 4 && fixture.Player->ScaleX == 1, "Crowding moved or scaled protected markers");
+            fixture.Addon->MarkerPositionScaling = 0.5f;
+            fixture.Appearance.Apply(fixture.Addon, settings);
+            Require(fixture.Marker->ScaleX == 1 && fixture.Edge->ScaleX == 1, "Native zoom kept crowded icon sizes");
+        });
+        check("Cardinals and coordinates hide independently without hiding the round frame", () =>
+        {
+            using var fixture = new Fixture();
+            for (var flags = 0; flags < 4; flags++)
+            {
+                var settings = AppearanceSettings.Default with { HideCardinals = (flags & 1) != 0, HideCoordinates = (flags & 2) != 0 };
+                fixture.Appearance.Apply(fixture.Addon, settings);
+                foreach (var address in fixture.DecorationNodes)
+                {
+                    var node = (AtkResNode*)address;
+                    var hidden = node->NodeId >= 9 ? settings.HideCardinals : settings.HideCoordinates;
+                    Require(((node->NodeFlags & NodeFlags.Visible) == 0) == hidden, "Decoration toggle is coupled");
+                }
+                Require((fixture.Border->DrawFlags & Hidden) == 0, "Hiding cardinals hid the round border");
+            }
+            fixture.Appearance.Restore(fixture.Addon);
+            Require(fixture.DecorationNodes.All(address => (((AtkResNode*)address)->NodeFlags & NodeFlags.Visible) != 0), "Decoration did not restore");
+        });
+        check("Map opacity preserves icons, RGB, newer native alpha and restores without compounding", () =>
+        {
+            using var fixture = new Fixture();
+            var map = fixture.Addon->MapImage;
+            map->Color.A = 200; map->Color.R = 123; fixture.Marker->Color.A = 245;
+            var settings = AppearanceSettings.Default with { MapOpacity = 0.5f };
+            for (var i = 0; i < 30; i++) fixture.Appearance.Apply(fixture.Addon, settings);
+            Require(map->Color.A == 100 && map->Color.R == 123 && fixture.Marker->Color.A == 245, "Opacity compounded or affected other layers");
+            map->Color.A = 180;
+            fixture.Appearance.RestoreMarkerOverrides(fixture.Addon);
+            Require(map->Color.A == 180, "Overwrote a newer native alpha");
+            fixture.Appearance.Apply(fixture.Addon, settings);
+            Require(map->Color.A == 90, "Native alpha was not taken into account");
+            fixture.Appearance.Apply(fixture.Addon, settings with { MapOpacity = 0 });
+            Require(map->Color.A == 0 && (fixture.Marker->NodeFlags & NodeFlags.Visible) != 0, "Zero opacity hid markers");
+            fixture.Appearance.Restore(fixture.Addon);
+            Require(map->Color.A == 180 && map->Color.R == 123, "Map opacity did not restore");
+        });
+        check("Changing frame thickness regenerates only its texture and releases it safely", () =>
+        {
+            using var fixture = new Fixture();
+            var settings = AppearanceSettings.Default with { Square = true, FrameStyle = SquareFrameStyle.Corners };
+            fixture.Appearance.Apply(fixture.Addon, settings);
+            fixture.Appearance.Apply(fixture.Addon, settings with { FrameThickness = 7, CornerLength = 40 });
+            Require(fixture.Created == 3 && fixture.Released == 1, "Frame size did not invalidate its cache or rebuilt the mask");
+            fixture.Appearance.Restore(fixture.Addon);
+            Require(fixture.Created == fixture.Released, "Frame size update leaked a texture");
+        });
         check("Square mask covers the collision rectangle, with opaque black margins", () =>
         {
             var pixels = SquareMaskPixels.Create(176, 176, 11f / 176, 10f / 176, 167f / 176, 166f / 176);
@@ -438,6 +501,7 @@ internal static unsafe class AppearanceChecks
         public AtkImageNode* Sun;
         public AtkComponentNode* Weather;
         public nint[] ControlNodes;
+        public nint[] DecorationNodes;
         public AtkComponentNode* Marker;
         public AtkComponentNode* Edge;
         public AtkComponentNode* Player;
@@ -454,6 +518,9 @@ internal static unsafe class AppearanceChecks
         public Fixture()
         {
             Addon = Allocate<AddonNaviMap>();
+            Addon->MapImage = Allocate<AtkImageNode>();
+            Addon->MapImage->Type = NodeType.Image;
+            Addon->MapImage->Color.A = 255;
             Mask = Allocate<AtkImageNode>();
             Collision = Allocate<AtkCollisionNode>();
             Border = Allocate<AtkResNode>();
@@ -505,12 +572,20 @@ internal static unsafe class AppearanceChecks
             Frame->PartId = 1;
             Weather = CreateControl(14);
             ControlNodes = [(nint)Weather, (nint)CreateControl(2), (nint)CreateControl(3), (nint)CreateControl(4)];
-            var nodes = (AtkResNode**)Allocate<nint>(6);
+            DecorationNodes = new nint[7];
+            var ids = new uint[] { 5, 6, 7, 9, 10, 11, 12 };
+            for (var i = 0; i < ids.Length; i++)
+            {
+                var decoration = Allocate<AtkResNode>(); decoration->NodeId = ids[i]; decoration->NodeFlags = NodeFlags.Visible;
+                DecorationNodes[i] = (nint)decoration;
+            }
+            var nodes = (AtkResNode**)Allocate<nint>(13);
             nodes[0] = Border;
             nodes[1] = (AtkResNode*)Frame;
             Addon->UldManager.NodeList = nodes;
             for (var i = 0; i < ControlNodes.Length; i++) nodes[i + 2] = (AtkResNode*)ControlNodes[i];
-            Addon->UldManager.NodeListCount = Addon->UldManager.NodeListSize = 6;
+            for (var i = 0; i < DecorationNodes.Length; i++) nodes[i + 6] = (AtkResNode*)DecorationNodes[i];
+            Addon->UldManager.NodeListCount = Addon->UldManager.NodeListSize = 13;
             Addon->NaviMap.NaviMapMarkers[0].ComponentNode = Marker;
             Addon->NaviMap.NaviMapMarkers[100].ComponentNode = Player;
             Addon->NaviMap.PlayerPin = Player;

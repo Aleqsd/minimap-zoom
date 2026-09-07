@@ -95,6 +95,7 @@ internal static unsafe class Program
         });
 
         AppearanceChecks.Run(Check);
+        FeatureChecks.Run(Check);
         MarkerRangeChecks.Run(Check);
 
         if (args.Length == 2 && args[0] == "--game-exe") VerifyExecutable(args[1]);

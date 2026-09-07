@@ -31,6 +31,8 @@ internal static unsafe class NativeLayout
             Marshal.OffsetOf<AddonNaviMap>(nameof(AddonNaviMap.MainCollision)) != 0x1590 ||
             Marshal.OffsetOf<AtkImageNode>(nameof(AtkImageNode.PartsList)) != 0xC0 ||
             Marshal.OffsetOf<AtkResNode>(nameof(AtkResNode.DrawFlags)) != 0xB0 ||
+            Marshal.OffsetOf<AtkResNode>(nameof(AtkResNode.Color)) != 0x80 ||
+            Marshal.OffsetOf<FFXIVClientStructs.FFXIV.Client.Graphics.ByteColor>("A") != 3 ||
             Marshal.OffsetOf<AtkResNode>(nameof(AtkResNode.ScaleX)) != 0x4C ||
             Marshal.OffsetOf<AtkResNode>(nameof(AtkResNode.ScaleY)) != 0x50 ||
             Marshal.OffsetOf<AtkResNode>(nameof(AtkResNode.Rotation)) != 0x54 ||

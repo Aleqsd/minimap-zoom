@@ -1,20 +1,32 @@
-# Validation de 0.4.1
+# Validation de 0.5.0
 
-- Compilation Release avec le SDK .NET 10 et Dalamud API 15 : aucune erreur ni avertissement.
-- 54 contrôles hors jeu : structures natives, cinq signatures uniques dans le client pris en charge, zoom et restauration, portée des marqueurs, masquage, textures privées, tailles, filtres et migrations.
-- Les nouveaux contrôles couvrent les huit combinaisons météo/boutons/soleil, les images et collisions enfants, les composants imbriqués, les mises à jour natives répétées et la restauration des états de visibilité, de zoom et du nord verrouillé.
-- Panneau réel ImGui rendu à 100 %, 150 % et 200 %, à largeur normale et à largeur 360 ; fenêtre minimale 360 × 320 avec défilement. Inspection des vues Carte, Marqueurs, Démarrage, du masquage global, de l’attente et de l’incompatibilité.
-- Événements souris ImGui : météo, boutons, soleil/lune, cadre, curseur de zoom, navigation, masquage global, catégorie désactivée puis réactivée, défilement jusqu’aux commandes de restauration.
-- Une configuration 0.4.0 avec thème, police, couleurs, opacité et offsets personnalisés produit exactement les mêmes pixels que le défaut. Les préférences natives sont conservées et les anciens champs de style ne sont plus enregistrés. Changer le style et la couleur du cadre ne modifie pas le thème du panneau.
+- Compilation Release, .NET 10 et Dalamud API 15 : aucune erreur ni avertissement.
+- 68 contrôles hors jeu : contrats et offsets natifs, empreinte du client et cinq signatures uniques, zoom, portée, restauration, textures privées, filtres et migrations.
+- Nouveaux essais : masquage indépendant de la boussole et des coordonnées, opacité sans effet sur les icônes ou le RGB, absence de multiplication répétée, conservation d’un alpha natif plus récent et restauration.
+- Profils : migration depuis 0.4.1, duplication indépendante, renommage, choix automatique par zone, retour au choix manuel, suppression des seules associations concernées, valeurs invalides et rechargement avec System.Text.Json et Newtonsoft.Json.
+- Raccourci : machine d’état testée à l’appui et au relâchement, perte de contexte, annulation et nécessité d’un nouvel appui. Les coefficients temporaires restent séparés des préférences. Les touches réellement reçues dans FFXIV ne sont pas simulées par ces essais.
+- Réduction d’encombrement : seules les icônes secondaires reconnues et proches sont réduites, au zoom étendu ; les positions et repères protégés restent identiques. Les tailles et textures de cadres se restaurent sans fuite dans les fixtures.
+- 31 scénarios du panneau réel ImGui : Carte, Marqueurs, Profils et Utilisation à 100 %, 150 % et 200 %, fenêtre normale 620 × 820 et minimale 380 × 360, libellés longs, attente, incompatibilité, restauration et filtres désactivés. Défilement du contenu avec profil/navigation fixes ; aucune barre horizontale.
+- Événements souris et clavier ImGui : navigation, cadre et dimensions, cinq décorations, opacité, zoom, filtre global et catégorie désactivée/réactivée, saisie du nom « Profil été », duplication, association de zone, profils automatiques, raccourci et restauration.
+- Ancienne configuration de style : rendu identique pixel par pixel. Changer la couleur ou le style du cadre laisse les réglages visuellement stables.
 
-![Réglages des marqueurs](images/settings-markers.png)
+![Réglages de la carte](images/settings-map.png)
 
-*Rendu ImGui hors jeu, Segoe UI et données fictives. La fenêtre en jeu utilise la police active de Dalamud.*
+![Réglages des profils](images/settings-profiles.png)
 
-## Ce qui reste à confirmer en jeu
+*Rendus ImGui hors jeu, Segoe UI et données fictives. En jeu, les réglages utilisent la police active de Dalamud.*
 
-Le dézoom initial a été confirmé par l’utilisateur. Les correctifs de portée, les masquages et la fenêtre ont été contrôlés hors jeu ; leur résultat natif nécessite un essai dans FFXIV. Une compilation ou un chargement réussi ne vaut pas validation du rendu.
+## Essai restant dans FFXIV
 
-Dans `/minizoom`, essayer le zoom 0,25 près d’icônes fixes éloignées, puis masquer/réafficher des catégories, le soleil/la lune, la météo et les boutons. Les zones de clic et infobulles des contrôles masqués doivent disparaître puis revenir à la restauration. Vérifier aussi les boutons en mode nord verrouillé, la molette avec les boutons masqués, un changement de météo/zone et le rechargement. `/minizoom off` doit restaurer les éléments de la mini-carte.
+L’utilisateur a confirmé le fonctionnement du dézoom et fourni la capture en jeu de la version 0.4.1. Cette confirmation ne couvre pas le nouveau binaire 0.5.0. Les effets natifs, les clics du jeu, le cycle de chargement et le raccourci doivent encore être essayés dans FFXIV.
 
-Le compteur « Portée étendue » de Diagnostic doit augmenter avec le zoom étendu actif. Vérifier déplacement, flèches de bordure, rotation et éditeur ATH. Les quêtes en cours, l’épopée, les quêtes bleues et les icônes inconnues sont conservées par les filtres sélectifs. Le masquage global retire tous les marqueurs réguliers, y compris leurs surfaces ; le repère du personnage reste visible. Des icônes peuvent encore manquer si les données ne sont pas disponibles ou si les 100 emplacements natifs sont occupés.
+1. Charger une seule copie de 0.5.0 et vérifier version/chemin dans Utilisation → Diagnostic. Vérifier que Personnel reprend les anciens réglages.
+2. Masquer puis réafficher boussole, coordonnées, soleil/lune, météo et boutons. En rond comme en carré, les autres éléments et le personnage doivent rester indépendants.
+3. Régler l’opacité du fond à 0 %, 40 % et 100 %. Vérifier les icônes, la rotation/nord verrouillé, un changement de zone et la restauration.
+4. Modifier l’épaisseur et les angles du cadre. Vérifier déplacement et échelle dans l’éditeur ATH, puis désactivation/rechargement.
+5. Dupliquer un profil, modifier son zoom et ses filtres, associer deux zones et activer l’automatisme. Quitter une zone associée doit rétablir le dernier profil manuel ; un choix manuel doit suspendre l’automatisme.
+6. Activer un raccourci libre, le maintenir puis le relâcher. Vérifier aussi avec le zoom du jeu actif, pendant la saisie dans le chat ou ImGui, après changement de zone, perte de focus et fermeture de l’addon. Le zoom enregistré dans le profil doit rester intact.
+7. Comparer les icônes secondaires regroupées à 0,25 avec/sans réduction, puis à 0,50. Les positions, le joueur, les objectifs protégés et les surfaces restent identiques. La réduction n’élimine pas une superposition exacte.
+8. Restaurer toute la mini-carte puis recharger : affichage du jeu conservé et profils encore enregistrés. Reprendre le profil doit réappliquer ses préférences.
+
+La capacité native reste de 100 marqueurs. Des icônes peuvent manquer faute de données côté client ou de place ; le compteur de portée ne prouve pas à lui seul leur rendu. L’élargissement de collecte et l’absence de garde PvP restent les limites décrites dans la préparation de soumission officielle ; cette release ne constitue pas une approbation du catalogue officiel.

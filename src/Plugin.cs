@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
@@ -21,10 +23,21 @@ public sealed unsafe class Plugin : IDalamudPlugin
     [PluginService] internal static ISigScanner Scanner { get; private set; } = null!;
     [PluginService] internal static IGameInteropProvider Interop { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
+    [PluginService] internal static IKeyState Keys { get; private set; } = null!;
+    [PluginService] internal static IDataManager Data { get; private set; } = null!;
 
     private readonly ConcurrentQueue<Action> requests = new();
     private readonly MinimapAppearance appearance = new();
     private readonly Configuration configuration;
+    private readonly ProfileStore profiles;
+    private readonly TemporaryZoom temporary = new();
+    private ProfileView profilesView = null!;
+    private uint territory;
+    private string zoneName = "Hors jeu";
+    private volatile bool keyboardCaptured;
+    private bool effectsSuspended;
+    private float EffectiveZoom => temporary.Active ? temporary.Target : requestedZoom;
+    private AppearanceSettings EffectiveAppearance => effectsSuspended ? AppearanceSettings.Default : appearanceSettings;
     private readonly NativeMinimap? native;
     private readonly string? compatibilityError;
     private volatile ViewState view = new(false, false, 0.5f, "Initialisation…", AppearanceSettings.Default);
@@ -47,24 +60,28 @@ public sealed unsafe class Plugin : IDalamudPlugin
     {
         var loaded = PluginInterface.GetPluginConfig() as Configuration;
         configuration = loaded ?? new Configuration();
-        configuration.Version = 4;
-        requestedZoom = ZoomPolicy.Extended(configuration.LastZoom);
-        appearanceSettings = configuration.Appearance;
+        profiles = new ProfileStore(configuration);
+        requestedZoom = profiles.Active.Zoom;
+        appearanceSettings = profiles.Active.Appearance;
+        effectsSuspended = configuration.EffectsSuspended;
         enableZoomOnStartup = configuration.EnableZoomOnStartup;
         openWindowOnStartup = configuration.OpenWindowOnStartup;
         var actions = new SettingsActions(
             zoom => requests.Enqueue(() => EnableAt(zoom)),
-            () => requests.Enqueue(() => { enableZoomOnStartup = false; DisableAndRestore(); RememberZoom(); }),
+            () => requests.Enqueue(() => { CancelTemporary(); enableZoomOnStartup = false; DisableAndRestore(); RememberZoom(); }),
             () => requests.Enqueue(ResetAll), ChangeAppearance,
             value => requests.Enqueue(() => { enableZoomOnStartup = value; RememberZoom(); }),
-            value => requests.Enqueue(() => { openWindowOnStartup = value; RememberZoom(); }));
+            value => requests.Enqueue(() => { openWindowOnStartup = value; RememberZoom(); }),
+            request => requests.Enqueue(() => ChangeProfile(request)),
+            value => requests.Enqueue(() => { CancelTemporary(); configuration.Shortcut = value.Normalize(); RememberZoom(); }));
+        RefreshProfilesView();
         window = new SettingsWindow(() => view, actions, Diagnostic, () => compatibilityError == null);
         windowSystem.AddWindow(window);
         window.IsOpen = openWindowOnStartup;
         try
         {
             native = new NativeMinimap(Scanner, Interop, OnNativeZoom,
-                () => enabled && !disposing && NativeMinimap.IsReady(CurrentAddon()) ? requestedZoom : 0.5f,
+                () => enabled && !disposing && NativeMinimap.IsReady(CurrentAddon()) ? EffectiveZoom : 0.5f,
                 exception => requests.Enqueue(() => HandleFailure(exception)));
             Log.Information($"Minimap Zoom {BuildIdentity.Version} (build {BuildIdentity.BuildId}) ready from {PluginInterface.AssemblyLocation.FullName}; client and native signatures validated. Settings: /minizoom.");
         }
@@ -89,7 +106,7 @@ public sealed unsafe class Plugin : IDalamudPlugin
         Lifecycle.RegisterListener(AddonEvent.PreRequestedUpdate, "_NaviMap", OnAddonUpdate);
         Lifecycle.RegisterListener(AddonEvent.PostRequestedUpdate, "_NaviMap", OnAddonUpdate);
         Lifecycle.RegisterListener(AddonEvent.PreDraw, "_NaviMap", OnAddonUpdate);
-        if (native != null && enableZoomOnStartup) requests.Enqueue(() => EnableAt(requestedZoom));
+        if (native != null && enableZoomOnStartup && !effectsSuspended) requests.Enqueue(() => EnableAt(requestedZoom));
     }
 
     private void OpenWindow() => window.IsOpen = true;
@@ -107,6 +124,8 @@ public sealed unsafe class Plugin : IDalamudPlugin
     private void EnableAt(float zoom)
     {
         if (native == null) return;
+        CancelTemporary();
+        effectsSuspended = false;
         runtimeError = null;
         requestedZoom = ZoomPolicy.Extended(zoom);
         native.Enable();
@@ -128,6 +147,18 @@ public sealed unsafe class Plugin : IDalamudPlugin
             }
             var addon = CurrentAddon();
             var ready = ClientState.IsLoggedIn && NativeMinimap.IsReady(addon);
+            var nextTerritory = ClientState.IsLoggedIn ? ClientState.TerritoryType : 0u;
+            if (territory != nextTerritory)
+            {
+                CancelTemporary();
+                territory = nextTerritory;
+                zoneName = territory == 0 ? "Hors jeu" : Data.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()
+                    .GetRowOrDefault(territory)?.PlaceName.ValueNullable?.Name.ToString() ?? $"Zone {territory}";
+                if (territory != 0 && configuration.AutomaticProfiles)
+                { profiles.ForZone(territory); ApplyActiveProfile(); }
+                RefreshProfilesView();
+            }
+            UpdateTemporary(addon, ready);
             if (enabled && ready)
             {
                 if (trackedAddon != (nint)addon)
@@ -139,22 +170,23 @@ public sealed unsafe class Plugin : IDalamudPlugin
                 }
                 if (applyPending)
                 {
-                    native!.Apply(addon, requestedZoom, 1, true);
+                    native!.Apply(addon, EffectiveZoom, 1, true);
                     applyPending = false;
-                    Log.Information($"Minimap Zoom applied: zoom={requestedZoom:0.00}, background={addon->MapImage->ScaleX:0.00}, restore={restoreZoom:0.00}.");
                 }
                 SanitizeSavedParameter(addon);
             }
 
-            if (ready) appearance.Apply(addon, appearanceSettings);
+            if (ready) appearance.Apply(addon, EffectiveAppearance);
 
             if (configDirty && DateTime.UtcNow >= saveAfter)
             {
                 SaveConfiguration();
             }
             view = new(enabled, ready, ready ? addon->MarkerPositionScaling : requestedZoom,
-                compatibilityError ?? runtimeError ?? (!ready ? "En attente de la mini-carte…" : enabled ? "Zoom personnalisé actif" : "Zoom du jeu"),
-                appearanceSettings, enableZoomOnStartup, openWindowOnStartup);
+                compatibilityError ?? runtimeError ?? (!ready ? "En attente de la mini-carte…" : effectsSuspended ? "Affichage du jeu restauré" :
+                    temporary.Active ? "Vue temporaire · relâchez pour revenir" : enabled ? "Zoom personnalisé actif" : "Zoom du jeu"),
+                appearanceSettings, enableZoomOnStartup, openWindowOnStartup, profilesView, configuration.Shortcut,
+                temporary.Active, requestedZoom, effectsSuspended);
         }
         catch (Exception exception)
         {
@@ -169,7 +201,7 @@ public sealed unsafe class Plugin : IDalamudPlugin
         try
         {
             if (type is AddonEvent.PreUpdate or AddonEvent.PreRequestedUpdate) appearance.RestoreMarkerOverrides(addon);
-            else if (ClientState.IsLoggedIn && NativeMinimap.IsReady(addon)) appearance.Apply(addon, appearanceSettings);
+            else if (ClientState.IsLoggedIn && NativeMinimap.IsReady(addon)) appearance.Apply(addon, EffectiveAppearance);
         }
         catch (Exception exception) { HandleFailure(exception); }
     }
@@ -199,9 +231,9 @@ public sealed unsafe class Plugin : IDalamudPlugin
         {
             appearance.RestoreMarkerOverrides(addon);
             // Config reloads (refresh=0) keep the plugin preference; actual input uses the game's new value.
-            var zoom = refresh == 0 ? requestedZoom : ZoomPolicy.Extended(addon->MarkerPositionScaling);
+            var zoom = temporary.Active ? EffectiveZoom : refresh == 0 ? requestedZoom : ZoomPolicy.Extended(addon->MarkerPositionScaling);
             native!.Apply(addon, zoom, refresh, true);
-            if (requestedZoom != zoom)
+            if (!temporary.Active && requestedZoom != zoom)
             {
                 requestedZoom = zoom;
                 RememberZoom();
@@ -220,6 +252,8 @@ public sealed unsafe class Plugin : IDalamudPlugin
 
     private void RememberZoom()
     {
+        profiles.Remember(requestedZoom, appearanceSettings);
+        RefreshProfilesView();
         configDirty = true;
         saveAfter = DateTime.UtcNow.AddMilliseconds(500);
     }
@@ -227,27 +261,20 @@ public sealed unsafe class Plugin : IDalamudPlugin
     private void SaveConfiguration()
     {
         configuration.LastZoom = requestedZoom;
-        configuration.SquareMinimap = appearanceSettings.Square;
-        configuration.HideMarkers = appearanceSettings.HideMarkers;
-        configuration.HiddenCategories = appearanceSettings.HiddenCategories;
-        configuration.MarkerScale = appearanceSettings.MarkerScale;
-        configuration.PlayerScale = appearanceSettings.PlayerScale;
-        configuration.HideFrame = appearanceSettings.HideFrame;
-        configuration.HideSunMoon = appearanceSettings.HideSunMoon;
-        configuration.HideWeather = appearanceSettings.HideWeather;
-        configuration.HideButtons = appearanceSettings.HideButtons;
-        configuration.FrameStyle = appearanceSettings.FrameStyle;
-        configuration.FrameColor = appearanceSettings.FrameColor;
+        configuration.SetAppearance(appearanceSettings);
         configuration.EnableZoomOnStartup = enableZoomOnStartup;
         configuration.OpenWindowOnStartup = openWindowOnStartup;
+        configuration.EffectsSuspended = effectsSuspended;
         PluginInterface.SavePluginConfig(configuration);
         configDirty = false;
     }
 
     private void ResetAll()
     {
-        appearanceSettings = AppearanceSettings.Default;
+        CancelTemporary();
+        effectsSuspended = true;
         enableZoomOnStartup = false;
+        configuration.AutomaticProfiles = false;
         RememberZoom();
         DisableAndRestore();
     }
@@ -297,6 +324,11 @@ public sealed unsafe class Plugin : IDalamudPlugin
         var addon = (AddonNaviMap*)args.Addon.Address;
         try
         {
+            if (temporary.Cancel())
+            {
+                enabled = temporary.WasEnabled;
+                if (!enabled) native?.Disable();
+            }
             appearance.Restore(addon);
             // PreFinalize still owns the nodes, but a full marker refresh is unnecessary during teardown.
             Restore(addon, 0);
@@ -316,14 +348,92 @@ public sealed unsafe class Plugin : IDalamudPlugin
 
     private void Draw()
     {
-        if (!disposing) windowSystem.Draw();
+        if (!disposing)
+        {
+            keyboardCaptured = ImGui.GetIO().WantCaptureKeyboard || ImGui.GetIO().WantTextInput;
+            windowSystem.Draw();
+        }
     }
 
     private void ChangeAppearance(Func<AppearanceSettings, AppearanceSettings> change) => requests.Enqueue(() =>
     {
+        effectsSuspended = false;
         appearanceSettings = change(appearanceSettings).Normalize();
         RememberZoom();
     });
+
+    private void RefreshProfilesView() => profilesView = new(profiles.ActiveId, configuration.ManualProfileId,
+        configuration.Profiles.Select(p => p with { }).ToArray(), configuration.AutomaticProfiles, territory, zoneName,
+        configuration.ZoneRules.ToArray());
+
+    private void ApplyActiveProfile()
+    {
+        CancelTemporary();
+        requestedZoom = profiles.Active.Zoom;
+        appearanceSettings = profiles.Active.Appearance;
+        EnableAt(requestedZoom);
+    }
+
+    private void ChangeProfile(ProfileRequest request)
+    {
+        CancelTemporary();
+        switch (request.Operation)
+        {
+            case ProfileOperation.Select:
+                profiles.Select(request.Value, true); ApplyActiveProfile(); break;
+            case ProfileOperation.Duplicate:
+                profiles.Duplicate(request.Value); ApplyActiveProfile(); break;
+            case ProfileOperation.Rename:
+                profiles.Active.Name = ProfileStore.Name(request.Value); break;
+            case ProfileOperation.Delete:
+                profiles.DeleteActive(); ApplyActiveProfile(); break;
+            case ProfileOperation.Automatic:
+                configuration.AutomaticProfiles = request.Enabled;
+                profiles.ForZone(territory); ApplyActiveProfile(); break;
+            case ProfileOperation.Bind:
+                profiles.Bind(territory, zoneName, request.Value);
+                if (configuration.AutomaticProfiles) { profiles.ForZone(territory); ApplyActiveProfile(); }
+                break;
+            case ProfileOperation.Unbind:
+                profiles.Bind(request.TerritoryId, "", null);
+                if (configuration.AutomaticProfiles) { profiles.ForZone(territory); ApplyActiveProfile(); }
+                break;
+        }
+        RememberZoom();
+    }
+
+    private void UpdateTemporary(AddonNaviMap* addon, bool ready)
+    {
+        var shortcut = configuration.Shortcut;
+        var allowed = shortcut.Enabled && !effectsSuspended && ready && !keyboardCaptured && !GameGui.GameUiHidden &&
+            addon->IsVisible && HasGameFocus();
+        if (allowed)
+        {
+            var module = RaptureAtkModule.Instance();
+            allowed = module != null && !module->IsTextInputActive();
+        }
+        bool Down(int key) => Keys.IsVirtualKeyValid(key) && Keys[key];
+        var down = allowed && Down(shortcut.Key) && Down(0x11) == shortcut.Control &&
+            Down(0x12) == shortcut.Alt && Down(0x10) == shortcut.Shift;
+        var transition = temporary.Update(down, allowed, enabled, ready ? addon->MarkerPositionScaling : requestedZoom, shortcut.Zoom);
+        if (transition == HoldTransition.Start) { native!.Enable(); enabled = true; applyPending = true; }
+        else if (transition == HoldTransition.End) FinishTemporary();
+    }
+
+    private void CancelTemporary() { if (temporary.Cancel()) FinishTemporary(); }
+    private void FinishTemporary()
+    {
+        if (temporary.WasEnabled) { enabled = true; applyPending = true; }
+        else DisableAndRestore();
+    }
+
+    private static bool HasGameFocus()
+    {
+        GetWindowThreadProcessId(GetForegroundWindow(), out var process);
+        return process == Environment.ProcessId;
+    }
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
 
     private string Diagnostic() =>
         $"Client : {NativeContracts.GameVersion}\nMini-carte disponible : {(view.Ready ? "oui" : "non")}\n" +

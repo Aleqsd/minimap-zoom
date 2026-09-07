@@ -21,6 +21,9 @@ internal sealed unsafe class MinimapAppearance
     private readonly MinimapFrame frame;
     private readonly record struct ScaleSnapshot(float X, float Y, float AppliedX, float AppliedY);
     private readonly record struct VisibilitySnapshot(bool Visible, bool DrawDisabled);
+    private AtkImageNode* fadedMap;
+    private byte originalAlpha;
+    private byte appliedAlpha;
     private nint owner;
     private AtkImageNode* mask;
     private AtkCollisionNode* collision;
@@ -59,6 +62,20 @@ internal sealed unsafe class MinimapAppearance
         owner = (nint)addon;
         RestoreMarkerOverrides(addon);
         if (settings.HideSunMoon) Hide((AtkResNode*)addon->Sun, hiddenDecorations);
+        if (settings.HideCardinals)
+            for (uint id = 9; id <= 12; id++) Hide(FindNode(addon, id), hiddenDecorations);
+        if (settings.HideCoordinates)
+            for (uint id = 5; id <= 7; id++) Hide(FindNode(addon, id), hiddenDecorations);
+        if (settings.MapOpacity != 1f)
+        {
+            if (addon->MapImage == null || addon->MapImage->Type != NodeType.Image)
+                throw new NotSupportedException("Le fond de cette mini-carte n'est pas compatible.");
+            fadedMap = addon->MapImage;
+            originalAlpha = fadedMap->Color.A;
+            appliedAlpha = (byte)MathF.Round(originalAlpha * settings.MapOpacity);
+            // Matches AtkResNode.SetAlpha, RVA 0x661550: only writes Color.A (+0x83).
+            fadedMap->Color.A = appliedAlpha;
+        }
         if (settings.HideWeather) HideControl(FindNode(addon, 14));
         if (settings.HideButtons)
         {
@@ -80,7 +97,8 @@ internal sealed unsafe class MinimapAppearance
         if (settings.Square || settings.HideFrame) Hide(FindNode(addon, 13), hiddenBorders);
         if (settings.Square && !settings.HideFrame && settings.FrameStyle != SquareFrameStyle.None)
         {
-            frame.Apply((AtkImageNode*)FindNode(addon, 15), addon->MainCollision, settings.FrameStyle, settings.FrameColor);
+            frame.Apply((AtkImageNode*)FindNode(addon, 15), addon->MainCollision, settings.FrameStyle, settings.FrameColor,
+                settings.FrameThickness, settings.CornerLength);
         }
         else
         {
@@ -88,6 +106,20 @@ internal sealed unsafe class MinimapAppearance
             if (settings.Square || settings.HideFrame) Hide(FindNode(addon, 15), hiddenBorders);
         }
 
+        Span<MarkerFootprint> footprints = stackalloc MarkerFootprint[100];
+        footprints.Clear();
+        var reduceCrowding = settings.ReduceCrowding && addon->MarkerPositionScaling < 0.5f;
+        if (reduceCrowding)
+            for (var i = 0; i < footprints.Length; i++)
+            {
+                ref var marker = ref addon->NaviMap.NaviMapMarkers[i];
+                var node = (AtkResNode*)marker.ComponentNode;
+                if (node == null || IsWorldSized(marker)) continue;
+                var visible = (node->NodeFlags & NodeFlags.Visible) != 0 && (node->DrawFlags & DrawDisabled) == 0 &&
+                    !MarkerPolicy.ShouldHide(marker.IconId, marker.SecondaryIconId, settings.HiddenCategories, settings.HideMarkers);
+                footprints[i] = new(node->X, node->Y, (nint)node->ParentNode, visible &&
+                    float.IsFinite(node->X) && float.IsFinite(node->Y), MarkerCrowding.IsSecondary(marker.IconId, marker.SecondaryIconId));
+            }
         // Slot 100 is the player. Pair each regular icon with its separate edge-arrow group.
         for (var index = 0; index < 100; index++)
         {
@@ -107,12 +139,11 @@ internal sealed unsafe class MinimapAppearance
                 }
             }
             // Native world-size markers describe areas, not icon sizes. Preserve their footprint.
-            var worldSized = (marker.SubtextOrientation & 0xF) == 12 ||
-                (marker.Unknown1C != 0f && (marker.SubtextOrientation & 0x1000) == 0);
-            if (!worldSized && !MarkerPolicy.IsArea(marker.IconId) && !MarkerPolicy.IsArea(marker.SecondaryIconId))
+            if (!IsWorldSized(marker))
             {
-                Scale(node, settings.MarkerScale);
-                Scale(edge, settings.MarkerScale);
+                var scale = reduceCrowding ? MarkerCrowding.Scale(footprints, index, settings.MarkerScale) : settings.MarkerScale;
+                Scale(node, scale);
+                Scale(edge, scale);
             }
         }
         Scale((AtkResNode*)addon->NaviMap.PlayerPin, settings.PlayerScale);
@@ -123,6 +154,11 @@ internal sealed unsafe class MinimapAppearance
     public void RestoreMarkerOverrides(AddonNaviMap* addon)
     {
         if (owner == 0 || owner != (nint)addon) return;
+        if (fadedMap != null)
+        {
+            if (fadedMap->Color.A == appliedAlpha) fadedMap->Color.A = originalAlpha;
+            fadedMap = null;
+        }
         RestoreHidden(hiddenMarkers);
         RestoreHidden(hiddenDecorations);
         foreach (var (address, snapshot) in scaledMarkers)
@@ -134,6 +170,10 @@ internal sealed unsafe class MinimapAppearance
         }
         scaledMarkers.Clear();
     }
+
+    private static bool IsWorldSized(NaviMapMarker marker) => (marker.SubtextOrientation & 0xF) == 12 ||
+        (marker.Unknown1C != 0f && (marker.SubtextOrientation & 0x1000) == 0) ||
+        MarkerPolicy.IsArea(marker.IconId) || MarkerPolicy.IsArea(marker.SecondaryIconId);
 
     private void Scale(AtkResNode* node, float multiplier)
     {

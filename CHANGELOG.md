@@ -1,5 +1,15 @@
 # Historique
 
+## 0.5.0
+
+- Masquage indépendant des points cardinaux et des coordonnées ; opacité du fond séparée des icônes.
+- Profils Personnel, Exploration, Ville et Minimaliste, duplication et associations automatiques par zone.
+- Raccourci configurable à maintenir pour dézoomer, avec retour à la vue précédente au relâchement.
+- Épaisseur du cadre, longueur des angles et trois presets de cadre.
+- Presets de filtres Déplacements et Quêtes ; réduction facultative des icônes secondaires proches au fort dézoom.
+- Réglages réorganisés en Carte, Marqueurs, Profils et Utilisation. Profil et navigation restent visibles pendant le défilement.
+- La restauration du jeu conserve les profils et suspend les changements automatiques, y compris après rechargement.
+
 ## 0.4.1
 
 - Masquage indépendant de la météo et des boutons +, − et verrouillage du nord, avec leurs zones cliquables.

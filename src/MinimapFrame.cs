@@ -13,9 +13,10 @@ internal sealed unsafe class MinimapFrame(CreateMaskTexture createTexture, Relea
     private Texture* texture;
     private FrameKey key;
     private readonly record struct FrameKey(int Width, int Height, int Left, int Top, int Right, int Bottom,
-        SquareFrameStyle Style, uint Color);
+        SquareFrameStyle Style, uint Color, int Thickness, int CornerLength);
 
-    public void Apply(AtkImageNode* target, AtkCollisionNode* collision, SquareFrameStyle style, uint color)
+    public void Apply(AtkImageNode* target, AtkCollisionNode* collision, SquareFrameStyle style, uint color,
+        int thickness = 0, int cornerLength = 22)
     {
         if (target == null || target->Type != NodeType.Image || collision == null ||
             target->ParentNode != collision->ParentNode || target->Rotation != 0f ||
@@ -26,13 +27,14 @@ internal sealed unsafe class MinimapFrame(CreateMaskTexture createTexture, Relea
         var next = new FrameKey(target->Width, target->Height,
             (int)MathF.Round(collision->X - target->X), (int)MathF.Round(collision->Y - target->Y),
             (int)MathF.Round(collision->X + collision->Width - target->X),
-            (int)MathF.Round(collision->Y + collision->Height - target->Y), style, color);
+            (int)MathF.Round(collision->Y + collision->Height - target->Y), style, color, thickness, cornerLength);
         if (privateParts != null && key == next) return;
         Restore();
         if (target->PartsList == null || target->PartsList->Parts == null ||
             target->PartId >= target->PartsList->PartCount || target->PartsList->Parts[target->PartId].UldAsset == null)
             throw new NotSupportedException("Texture du cadre indisponible.");
-        var pixels = FramePixels.Create(next.Width, next.Height, next.Left, next.Top, next.Right, next.Bottom, style, color);
+        var pixels = FramePixels.Create(next.Width, next.Height, next.Left, next.Top, next.Right, next.Bottom,
+            style, color, thickness, cornerLength);
         var created = createTexture(next.Width, next.Height, pixels);
         if (created == null) throw new InvalidOperationException("Création du cadre impossible.");
         byte* allocation;

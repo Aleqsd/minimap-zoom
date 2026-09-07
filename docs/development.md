@@ -30,6 +30,18 @@ La fenêtre utilise la police active de Dalamud et son échelle globale. Elle ne
 
 Le champ obsolète `WindowAppearance` de la version 0.4.0 est ignoré à la lecture, sans réinitialiser zoom, cadre, marqueurs ou démarrage. Il disparaît au prochain enregistrement. Les lignes passent de deux colonnes à une disposition verticale quand la largeur disponible diminue.
 
+Depuis 0.5.0, la navigation comporte Carte, Marqueurs, Profils et Utilisation. L’en-tête indique le profil actif et l’état réellement appliqué ; les préférences restent consultables lorsque le jeu est restauré. Seul le contenu de l’onglet défile. La couleur et les dimensions du cadre ne changent jamais le thème du panneau.
+
+## Profils et raccourci
+
+La configuration 5 conserve les anciens champs pour la migration. Au premier chargement, le profil Personnel reprend exactement l’apparence et le zoom mémorisés ; Exploration, Ville et Minimaliste sont des choix supplémentaires. Aucun preset n’est activé silencieusement. Les profils, leurs identifiants et les associations par identifiant de territoire sont enregistrés dans la configuration Dalamud. Les noms sont limités à 40 caractères, le nombre de profils à 20 ; supprimer un profil retire seulement ses associations.
+
+Les changements modifient le profil courant automatiquement. Une sélection manuelle suspend les profils automatiques. Lorsqu’ils sont activés, entrer dans une zone associée applique son profil ; une zone non associée rétablit le dernier choix manuel. Les noms de zone sont lus depuis les données locales Lumina au changement de territoire, jamais pendant le dessin. Les profils ne déplacent pas le HUD.
+
+Le raccourci est global, facultatif et configurable (Ctrl + F6 proposé). `ZoomShortcut` normalise ses valeurs ; `TemporaryZoom` gère l’appui, le relâchement et l’annulation. Le coefficient effectif temporaire reste distinct du coefficient mémorisé. Un changement de zone, la saisie native ou ImGui, la perte de focus, la fermeture de l’addon ou un changement de profil termine la vue temporaire et impose un nouvel appui. Le plugin lit les touches via `IKeyState` sans les injecter ni les consommer ; choisir une combinaison libre dans le jeu.
+
+`/minizoom off` suspend l’apparence et les automatismes sans effacer les profils. Cet état est mémorisé. Reprendre le profil ou modifier son apparence permet de la réappliquer ; choisir un zoom l’active immédiatement. Rétablir seulement le zoom du jeu conserve l’apparence.
+
 ## Rendus hors jeu
 
 ```powershell
@@ -37,6 +49,8 @@ dotnet run --project tools/Preview/Preview.csproj -c Release '-p:DalamudHome=D:\
 ```
 
 Cet outil utilise le même `SettingsPanel` et le même thème, avec le moteur ImGui local de Dalamud. Il rasterise ses vraies listes de dessin et injecte des événements souris pour vérifier les contrôles et le défilement. Les données sont fictives. La police Segoe UI provient de Windows uniquement pour cette exécution ; elle n’est ni copiée ni distribuée dans le dépôt.
+
+Les bindings générés (`InitApi`) et manuels (`LibraryImport`) doivent résoudre la même instance de `cimgui.dll`. Le banc configure explicitement ce résolveur pour partager le contexte ImGui, y compris pour les champs texte. Ce résolveur appartient seulement à l’outil hors jeu, pas au plugin.
 
 Le rendu d’une ancienne configuration avec des valeurs extrêmes de style est comparé pixel par pixel au défaut. Un changement du cadre natif vérifie aussi que les couleurs et dimensions du panneau restent identiques. Les images publiques ne prouvent pas le rendu du HUD ni l’intégration de la fenêtre dans FFXIV. Les fichiers générés et dépendances copiées pour l’outil restent dans les dossiers ignorés.
 

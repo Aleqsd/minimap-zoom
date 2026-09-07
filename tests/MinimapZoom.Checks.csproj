@@ -9,6 +9,9 @@
     <DalamudHome Condition="'$(DalamudHome)' == ''">$(APPDATA)\XIVLauncher\addon\Hooks\dev</DalamudHome>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\src\Profiles.cs" Link="Profiles.cs" />
+    <Compile Include="..\src\ZoomShortcut.cs" Link="ZoomShortcut.cs" />
+    <Compile Include="..\src\MarkerCrowding.cs" Link="MarkerCrowding.cs" />
     <Compile Include="..\src\ZoomPolicy.cs" Link="ZoomPolicy.cs" />
     <Compile Include="..\src\NativeContracts.cs" Link="NativeContracts.cs" />
     <Compile Include="..\src\MarkerRangeScope.cs" Link="MarkerRangeScope.cs" />

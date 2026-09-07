@@ -12,7 +12,7 @@ internal sealed class SettingsTheme : IDisposable
     public SettingsTheme()
     {
         var scale = Scale;
-        Var(ImGuiStyleVar.WindowPadding, new Vector2(12 * scale));
+        Var(ImGuiStyleVar.WindowPadding, new Vector2(16 * scale));
         Var(ImGuiStyleVar.FramePadding, new Vector2(8, 5) * scale);
         Var(ImGuiStyleVar.ItemSpacing, new Vector2(8, 8) * scale);
         Var(ImGuiStyleVar.CellPadding, new Vector2(4, 2) * scale);
