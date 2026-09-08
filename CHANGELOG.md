@@ -1,5 +1,11 @@
 # Historique
 
+## 0.5.1
+
+- Compatibilité avec le client `2026.09.01.0000.0000`, après vérification des fonctions et structures de la mini-carte.
+- Diagnostic distinguant le client détecté du client pris en charge, avec indication de mise à jour en cas d’incompatibilité.
+- Conservation des profils et des protections contre les versions du jeu non vérifiées.
+
 ## 0.5.0
 
 - Masquage indépendant des points cardinaux et des coordonnées ; opacité du fond séparée des icônes.

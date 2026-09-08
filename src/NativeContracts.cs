@@ -2,9 +2,9 @@ namespace MinimapZoom;
 
 internal static class NativeContracts
 {
-    public const string GameVersion = "2026.08.11.0000.0000";
-    public const string ExecutableSha256 = "74F0408AD357BA35B20B6FAD8C5BFA70C4B07A5A345F8840B3EA368AB395BDF0";
-    public const string SymbolCommit = "d8633414de71407f9eb45da830472e6e0fe26a08";
+    public const string GameVersion = "2026.09.01.0000.0000";
+    public const string ExecutableSha256 = "C8CA32A9332924E19EC0FCA158ADC9A783656DD0A89D84168C0604476BB7640B";
+    public const string SymbolCommit = "21898bf815f0e56e02b7dc08f0a3e24822c759d0";
 
     // Verified unique in the supported executable. No absolute process addresses or global float patches.
     public const string ApplyZoom = "40 57 48 83 EC 40 F3 0F 10 81 78 3A 00 00 48 8B F9 0F 29 7C 24 20 F3 0F 10 3D ?? ?? ?? ?? 0F 2F F8";

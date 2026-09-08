@@ -73,7 +73,8 @@ internal sealed class SettingsPanel
         }
         if (!compatible) ImGui.TextWrapped(diagnostic);
         ImGui.Spacing(); ImGui.Separator();
-        Hint(current == null ? "Application immédiate · sauvegarde automatique" : $"Modifications enregistrées dans « {current.Name} ».");
+        Hint(!compatible ? "Effets désactivés · réglages conservés" : current == null ?
+            "Application immédiate · sauvegarde automatique" : $"Modifications enregistrées dans « {current.Name} ».");
     }
 
     private void Mark(string id) => RecordItem?.Invoke(id, ImGui.GetItemRectMin(), ImGui.GetItemRectMax());

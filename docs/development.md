@@ -6,7 +6,7 @@ Prérequis : Windows x64, SDK .NET 10, bibliothèques locales de Dalamud API 15.
 .\build.ps1 -DalamudHome 'D:\Dalamud' -Dotnet 'dotnet' -Check -GameExecutable 'D:\FFXIV\game\ffxiv_dx11.exe'
 ```
 
-Le SDK facultatif `../.tools/dotnet/dotnet.exe` est utilisé s’il existe ; sinon le script emploie `dotnet` du PATH. Chaque dépôt reste compilable seul. `-SourceCommit` permet d’inscrire le commit vérifié dans `build-info.json` pour une release.
+Le SDK facultatif `../.tools/dotnet/dotnet.exe` est utilisé s’il existe ; sinon le script emploie `dotnet` du PATH. Sans `-DalamudHome`, le script utilise le dossier local `XIVLauncher/addon/Hooks/dev`, stable entre mises à jour Dalamud. Chaque dépôt reste compilable seul. `-SourceCommit` permet d’inscrire le commit vérifié dans `build-info.json` pour une release.
 
 Le build produit `releases/<version>/` et `plugin/`. Il vérifie la version assembly/manifeste et les empreintes des copies. **La copie vers `plugin/` peut déclencher un rechargement si Dalamud surveille ce chemin.** Une recompilation remplace les fichiers de la même version ; augmenter les versions du projet et du manifeste pour conserver un nouvel essai.
 

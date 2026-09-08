@@ -14,6 +14,7 @@
     <Compile Include="..\src\MarkerCrowding.cs" Link="MarkerCrowding.cs" />
     <Compile Include="..\src\ZoomPolicy.cs" Link="ZoomPolicy.cs" />
     <Compile Include="..\src\NativeContracts.cs" Link="NativeContracts.cs" />
+    <Compile Include="..\src\ClientCompatibility.cs" Link="ClientCompatibility.cs" />
     <Compile Include="..\src\MarkerRangeScope.cs" Link="MarkerRangeScope.cs" />
     <Compile Include="..\src\NativeLayout.cs" Link="NativeLayout.cs" />
     <Compile Include="..\src\NativeZoomOperations.cs" Link="NativeZoomOperations.cs" />

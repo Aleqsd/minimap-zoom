@@ -33,6 +33,6 @@ Si une copie de développement est déjà installée, la désactiver et retirer 
 - **Profils** : conservez plusieurs vues et associez-les aux zones de votre choix. Le profil Personnel reprend vos anciens réglages.
 - **Utilisation** : raccourci maintenu, démarrage et restauration. Le raccourci et les profils automatiques sont facultatifs.
 
-**Version expérimentale 0.5.0**, pour Dalamud API 15 et le client `2026.08.11.0000.0000`. La portée suit le dézoom, avec la limite native de 100 marqueurs et des données disponibles côté client. Les nouveaux effets de cette version sont vérifiés hors jeu et restent à confirmer dans FFXIV.
+**Version expérimentale 0.5.1**, pour Dalamud API 15 et le client `2026.09.01.0000.0000`. La portée suit le dézoom, avec la limite native de 100 marqueurs et des données disponibles côté client. Le correctif de compatibilité est vérifié hors jeu et reste à confirmer dans FFXIV.
 
 [Compiler et vérifier](docs/development.md) · [Validation](docs/validation.md) · [Historique](CHANGELOG.md)

@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -13,10 +12,10 @@ internal sealed unsafe class NativeMinimap : IDisposable
     private readonly NativeMarkerRange range;
     public long RangeExpansionCount => range.ExpansionCount;
 
-    public NativeMinimap(ISigScanner scanner, IGameInteropProvider interop, ApplyZoomDelegate detour,
+    public NativeMinimap(ISigScanner scanner, string clientVersion, IGameInteropProvider interop, ApplyZoomDelegate detour,
         Func<float> getZoom, Action<Exception> onError)
     {
-        ValidateClient(scanner.Module.FileName);
+        ClientCompatibility.ValidateExecutable(scanner.Module.FileName, clientVersion);
         NativeLayout.Validate();
         var applyAddress = scanner.ScanText(NativeContracts.ApplyZoom);
         var markerAddress = scanner.ScanText(NativeContracts.RefreshMarker);
@@ -27,18 +26,6 @@ internal sealed unsafe class NativeMinimap : IDisposable
         try { range = new NativeMarkerRange(scanner, interop, getZoom, onError); }
         catch { hook.Dispose(); throw; }
         operations = new NativeZoomOperations(hook.Original, refreshMarker, refreshMap, SetZoomOut);
-    }
-
-    public static void ValidateClient(string executable)
-    {
-        var versionPath = Path.Combine(Path.GetDirectoryName(executable)!, "ffxivgame.ver");
-        var version = File.ReadAllText(versionPath).Trim();
-        if (version != NativeContracts.GameVersion)
-            throw new NotSupportedException($"Client {version} : cette version du prototype attend {NativeContracts.GameVersion}.");
-        using var stream = File.OpenRead(executable);
-        var digest = Convert.ToHexString(SHA256.HashData(stream));
-        if (digest != NativeContracts.ExecutableSha256)
-            throw new NotSupportedException("L'exécutable diffère de la version analysée. Une nouvelle vérification est nécessaire.");
     }
 
     public void Enable()

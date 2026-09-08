@@ -40,6 +40,7 @@ public sealed unsafe class Plugin : IDalamudPlugin
     private AppearanceSettings EffectiveAppearance => effectsSuspended ? AppearanceSettings.Default : appearanceSettings;
     private readonly NativeMinimap? native;
     private readonly string? compatibilityError;
+    private readonly string detectedClientVersion = "indisponible";
     private volatile ViewState view = new(false, false, 0.5f, "Initialisation…", AppearanceSettings.Default);
     private volatile bool disposing;
     private readonly WindowSystem windowSystem = new("MinimapZoom");
@@ -80,7 +81,8 @@ public sealed unsafe class Plugin : IDalamudPlugin
         window.IsOpen = openWindowOnStartup;
         try
         {
-            native = new NativeMinimap(Scanner, Interop, OnNativeZoom,
+            detectedClientVersion = ClientCompatibility.ReadVersion(Scanner.Module.FileName);
+            native = new NativeMinimap(Scanner, detectedClientVersion, Interop, OnNativeZoom,
                 () => enabled && !disposing && NativeMinimap.IsReady(CurrentAddon()) ? EffectiveZoom : 0.5f,
                 exception => requests.Enqueue(() => HandleFailure(exception)));
             Log.Information($"Minimap Zoom {BuildIdentity.Version} (build {BuildIdentity.BuildId}) ready from {PluginInterface.AssemblyLocation.FullName}; client and native signatures validated. Settings: /minizoom.");
@@ -436,9 +438,11 @@ public sealed unsafe class Plugin : IDalamudPlugin
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
 
     private string Diagnostic() =>
-        $"Client : {NativeContracts.GameVersion}\nMini-carte disponible : {(view.Ready ? "oui" : "non")}\n" +
+        $"Client détecté : {detectedClientVersion}\nClient pris en charge : {NativeContracts.GameVersion}\n" +
+        $"Mini-carte disponible : {(view.Ready ? "oui" : "non")}\n" +
         $"Coefficient : {view.Zoom:0.00}\nVersion chargée : {BuildIdentity.Version} · build {BuildIdentity.BuildId}\n" +
-        $"DLL : {PluginInterface.AssemblyLocation.FullName}\nPortée étendue : {native?.RangeExpansionCount ?? 0} mises à jour";
+        $"DLL : {PluginInterface.AssemblyLocation.FullName}\nPortée étendue : " +
+        (native == null ? "indisponible (client non validé)" : $"{native.RangeExpansionCount} mises à jour");
     public void Dispose()
     {
         if (disposing) return;

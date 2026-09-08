@@ -1,5 +1,7 @@
 # Fonctions natives du prototype
 
+**Contrat actuel, depuis 0.5.1 : client `2026.09.01.0000.0000`.** Les nouvelles adresses et les vérifications sont dans [la mise à jour de compatibilité](compatibility-20260901.md). Les sections ci-dessous conservent l’analyse historique du client d’août ; leurs adresses ne sont pas celles du client actuel.
+
 Analyse statique du client `2026.08.11.0000.0000` le 6 septembre 2026. SHA-256 de `ffxiv_dx11.exe` :
 
 ```text

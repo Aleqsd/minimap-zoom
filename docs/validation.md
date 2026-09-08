@@ -1,4 +1,14 @@
-# Validation de 0.5.0
+# Validation
+
+## 0.5.1 — client du 1er septembre, vérifié le 8 septembre 2026
+
+- Compilation Release avec .NET 10 et Dalamud 15.0.3.3 : aucune erreur ni avertissement.
+- 70 contrôles hors jeu réussis, dont le couple version/empreinte du nouveau client, les cinq signatures uniques à leurs nouvelles adresses, les offsets et la restauration. Les versions inconnues et empreintes inattendues restent refusées.
+- Comparaison statique des fonctions de zoom/portée et du WidgetData complet de la mini-carte : voir [le relevé de compatibilité](compatibility-20260901.md).
+- 36 scénarios ImGui générés et contrôlés, dont six diagnostics d’incompatibilité inspectés aux tailles normale/minimale et à 100 %, 150 % et 200 %. Client détecté et client pris en charge sont distincts ; texte et pied de fenêtre restent lisibles.
+- Profils, zoom et apparence sauvegardés inchangés. Aucun essai de ce binaire dans FFXIV n’est revendiqué. Reprendre le parcours ci-dessous avec **0.5.1** sur le nouveau client ; vérifier particulièrement le chargement, le dézoom, les marqueurs et la restauration au déchargement.
+
+## Référence 0.5.0 — ancien client
 
 - Compilation Release, .NET 10 et Dalamud API 15 : aucune erreur ni avertissement.
 - 68 contrôles hors jeu : contrats et offsets natifs, empreinte du client et cinq signatures uniques, zoom, portée, restauration, textures privées, filtres et migrations.

@@ -1,5 +1,5 @@
 param(
-    [string]$DalamudHome = "$env:APPDATA\XIVLauncher\addon\Hooks\15.0.3.2",
+    [string]$DalamudHome = "$env:APPDATA\XIVLauncher\addon\Hooks\dev",
     [string]$Dotnet,
     [string]$SourceCommit,
     [switch]$Check,

@@ -25,11 +25,20 @@ internal static unsafe class Program
                 cases.Add(($"{names[tab]}-{scale * 100:0}", scale, 620, 820, tab));
                 cases.Add(($"{names[tab]}-minimum-{scale * 100:0}", scale, 380, 360, tab));
             }
-        foreach (var name in new[] { "legacy-settings", "native-frame-color", "waiting", "incompatible", "markers-hidden", "profiles-long", "suspended" })
+        foreach (var name in new[] { "legacy-settings", "native-frame-color", "waiting", "markers-hidden", "profiles-long", "suspended" })
             cases.Add((name, 1, 620, 820, name == "markers-hidden" ? 1 : name == "profiles-long" ? 2 : 0));
+        foreach (var scale in new[] { 1f, 1.5f, 2f })
+        {
+            cases.Add(($"incompatible-{scale * 100:0}", scale, 620, 820, 0));
+            cases.Add(($"incompatible-minimum-{scale * 100:0}", scale, 380, 360, 0));
+        }
+        string incompatibleMessage;
+        try { ClientCompatibility.ValidateVersion("2026.09.02.0000.0000"); throw new InvalidOperationException("Unverified preview client accepted"); }
+        catch (NotSupportedException error) { incompatibleMessage = error.Message; }
         string? baselineTheme = null;
         foreach (var (name, scale, width, windowHeight, tab) in cases)
         {
+            var incompatible = name.StartsWith("incompatible", StringComparison.Ordinal);
             var context = ImGui.CreateContext();
             try
             {
@@ -73,9 +82,9 @@ internal static unsafe class Program
                 }
                 ProfileView ProfileView() => new(store.ActiveId, saved.ManualProfileId, saved.Profiles.Select(p => p with { }).ToArray(),
                     saved.AutomaticProfiles, territory, zoneName, saved.ZoneRules.ToArray());
-                var ready = name is not ("waiting" or "incompatible");
-                var state = new ViewState(true, ready, saved.LastZoom, ready ? "Zoom personnalisé actif" : name == "incompatible" ?
-                    "Client incompatible : effets désactivés" : "En attente de la mini-carte…", saved.Appearance,
+                var ready = name != "waiting" && !incompatible;
+                var state = new ViewState(!incompatible, ready, saved.LastZoom, ready ? "Zoom personnalisé actif" : incompatible ?
+                    incompatibleMessage : "En attente de la mini-carte…", saved.Appearance,
                     Profiles: ProfileView(), Shortcut: saved.Shortcut, SavedZoom: saved.LastZoom);
                 if (name == "suspended") state = state with { Suspended = true, Enabled = false, Message = "Affichage du jeu restauré" };
                 var panel = new SettingsPanel { SelectTab = tab };
@@ -124,7 +133,16 @@ internal static unsafe class Program
                         ImGui.SetNextWindowSize(new Vector2(width, windowHeight) * scale, ImGuiCond.Always);
                         ImGui.Begin($"Minimap Zoom v{typeof(Program).Assembly.GetName().Version!.ToString(3)}", ImGuiWindowFlags.NoSavedSettings);
                         rects.Clear();
-                        panel.Draw(state, actions, "Aperçu ImGui hors jeu. Données fictives. Le rendu natif se valide en jeu.", name != "incompatible");
+                        panel.Draw(state, actions, incompatible ?
+                            $"Client détecté : 2026.09.02.0000.0000\nClient pris en charge : {NativeContracts.GameVersion}\n" +
+                            "Mini-carte disponible : non\nCoefficient : 0,25\nVersion chargée : 0.5.1 · build exemple\n" +
+                            "DLL : D:\\Plugins\\MinimapZoom\\MinimapZoom.dll\nPortée étendue : indisponible (client non validé)" :
+                            "Aperçu ImGui hors jeu. Données fictives. Le rendu natif se valide en jeu.", !incompatible);
+                        if (incompatible)
+                        {
+                            if (requestedScroll is { } requested) { ImGui.SetScrollY(requested); requestedScroll = null; }
+                            scrollMax = ImGui.GetScrollMaxY(); scrollY = ImGui.GetScrollY(); horizontalScroll = ImGui.GetScrollMaxX();
+                        }
                         ImGui.End();
                     }
                     ImGui.Render();
@@ -145,7 +163,7 @@ internal static unsafe class Program
                     io.AddMouseButtonEvent(0, false); RenderFrame(); Render();
                 }
                 Render();
-                Require(panel.ActiveTab == tab || name == "incompatible", "Wrong preview tab");
+                Require(panel.ActiveTab == tab || incompatible, "Wrong preview tab");
                 Require(horizontalScroll <= 1, "Unwanted horizontal scrolling");
                 Save();
                 if (name == "legacy-settings") Require(File.ReadAllBytes(Path.Combine(args[1], name + ".png"))

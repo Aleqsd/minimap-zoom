@@ -12,6 +12,31 @@ internal static unsafe class Program
     private static void Main(string[] args)
     {
         Check("Installed FFXIVClientStructs matches every accessed minimap field", NativeLayout.Validate);
+        Check("Verified client is accepted and unverified versions stay blocked before IO", () =>
+        {
+            ClientCompatibility.ValidateVersion(NativeContracts.GameVersion);
+            ClientCompatibility.ValidateHash(NativeContracts.ExecutableSha256);
+            foreach (var version in new[] { "2026.08.11.0000.0000", "2026.09.02.0000.0000", "", "unknown" })
+            {
+                try { ClientCompatibility.ValidateExecutable("missing-ffxiv.exe", version); }
+                catch (NotSupportedException error)
+                {
+                    Require(error.Message.Contains(version) && error.Message.Contains(NativeContracts.GameVersion) &&
+                        error.Message.Contains("/xlplugins"), "Incompatibility must identify detected/supported versions and next step");
+                    continue;
+                }
+                throw new InvalidOperationException("Unverified version was accepted");
+            }
+        });
+        Check("Matching version never bypasses the executable hash guard", () =>
+        {
+            foreach (var hash in new[] { new string('0', 64), "", NativeContracts.ExecutableSha256[..63] })
+            {
+                try { ClientCompatibility.ValidateHash(hash); }
+                catch (NotSupportedException) { continue; }
+                throw new InvalidOperationException("Unexpected hash was accepted");
+            }
+        });
         Check("Extended input never yields zero, infinity or NaN", () =>
         {
             foreach (var input in new[] { float.NaN, float.NegativeInfinity, float.PositiveInfinity, -1f, 0f, float.Epsilon, 0.25f, 0.5f, 2f, 999f })
@@ -109,18 +134,17 @@ internal static unsafe class Program
         var bytes = File.ReadAllBytes(path);
         Check("Executable hash and version match the analyzed client", () =>
         {
-            Require(Convert.ToHexString(SHA256.HashData(bytes)) == NativeContracts.ExecutableSha256, "Unsupported executable hash");
-            Require(File.ReadAllText(Path.Combine(Path.GetDirectoryName(path)!, "ffxivgame.ver")).Trim() == NativeContracts.GameVersion, "Unsupported version");
+            ClientCompatibility.ValidateExecutable(path, ClientCompatibility.ReadVersion(path));
         });
         using var pe = new PEReader(new MemoryStream(bytes));
         var text = pe.PEHeaders.SectionHeaders.Single(s => s.Name == ".text");
         foreach (var (name, signature, expectedRva) in new[]
         {
-            ("ApplyZoom", NativeContracts.ApplyZoom, 0x157BBF0),
-            ("RefreshMarker", NativeContracts.RefreshMarker, 0x157BEF0),
-            ("RefreshMap", NativeContracts.RefreshMap, 0x157C320),
-            ("UpdateNaviMap", NativeContracts.UpdateNaviMap, 0xFE0460),
-            ("CollectMapMarkers", NativeContracts.CollectMapMarkers, 0xFBCBF0),
+            ("ApplyZoom", NativeContracts.ApplyZoom, 0x1582980),
+            ("RefreshMarker", NativeContracts.RefreshMarker, 0x1582C80),
+            ("RefreshMap", NativeContracts.RefreshMap, 0x15830B0),
+            ("UpdateNaviMap", NativeContracts.UpdateNaviMap, 0xFE4C00),
+            ("CollectMapMarkers", NativeContracts.CollectMapMarkers, 0xFC1390),
         })
         {
             Check($"{name} signature is unique and matches the analyzed function", () =>
